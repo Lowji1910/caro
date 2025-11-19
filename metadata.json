@@ -1,0 +1,5 @@
+{
+  "name": "Pastel Tac-Toe & Caro",
+  "description": "A competitive multiplayer Tic-Tac-Toe and Caro (Gomoku) game with ranking systems, featuring a beautiful pastel UI and responsive design.",
+  "requestFramePermissions": []
+}
