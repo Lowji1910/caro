@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, MatchHistory } from '../types';
-import { ArrowLeft, Edit2, Lock } from 'lucide-react';
+import { ArrowLeft, Edit2, Lock, Eye } from 'lucide-react';
 import { COLORS } from '../constants';
 import { getTierInfo } from '../utils/tierUtils';
 import Button from './Button';
@@ -11,14 +11,18 @@ interface ProfileProps {
   onUpdate: (updated: Partial<UserProfile>) => Promise<void>;
   onLogout: () => void;
   socketURL: string;
+  isPublicView?: boolean;
+  onReplayMatch?: (matchId: number) => void;
 }
 
-export const Profile: React.FC<ProfileProps> = ({ 
-  user, 
-  onBack, 
+export const Profile: React.FC<ProfileProps> = ({
+  user,
+  onBack,
   onUpdate,
   onLogout,
-  socketURL
+  socketURL,
+  isPublicView,
+  onReplayMatch
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -30,7 +34,8 @@ export const Profile: React.FC<ProfileProps> = ({
     full_name: user.full_name || '',
     display_name: user.display_name || '',
     date_of_birth: user.date_of_birth || '',
-    bio: user.bio || ''
+    bio: user.bio || '',
+    avatar_url: user.avatar_url || ''
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -61,9 +66,9 @@ export const Profile: React.FC<ProfileProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      
+
       if (!res.ok) throw new Error('Update failed');
-      
+
       const updated = await res.json();
       await onUpdate(updated);
       setIsEditing(false);
@@ -97,7 +102,7 @@ export const Profile: React.FC<ProfileProps> = ({
       });
 
       if (!res.ok) throw new Error('Change password failed');
-      
+
       alert('Password changed successfully');
       setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswordModal(false);
@@ -139,9 +144,21 @@ export const Profile: React.FC<ProfileProps> = ({
           <div className="lg:col-span-1">
             <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 text-center sticky top-8">
               {/* Avatar */}
-              <div className={`w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br ${getRankColor(user.rank_level)} flex items-center justify-center text-4xl font-black text-white shadow-lg`}>
-                {user.display_name?.[0]?.toUpperCase() || 'U'}
-              </div>
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.display_name}
+                  className="w-24 h-24 mx-auto mb-4 rounded-full object-cover shadow-lg border-4 border-white"
+                  onError={(e) => {
+                    // Fallback to initial if image fails
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className={`w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br ${getRankColor(user.rank_level)} flex items-center justify-center text-4xl font-black text-white shadow-lg`}>
+                  {user.display_name?.[0]?.toUpperCase() || 'U'}
+                </div>
+              )}
 
               <h2 className="text-2xl font-black text-gray-800 mb-1">{user.display_name}</h2>
               <p className="text-gray-500 text-sm mb-4">{user.full_name || 'No name set'}</p>
@@ -156,7 +173,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 (() => {
                   const tierInfo = getTierInfo(user.user_level);
                   return (
-                    <div 
+                    <div
                       className="text-white rounded-full px-6 py-2 font-bold text-center mb-6"
                       style={{ backgroundColor: tierInfo?.color }}
                     >
@@ -173,16 +190,16 @@ export const Profile: React.FC<ProfileProps> = ({
               </div>
 
               {!isEditing && (
-                <Button 
-                  onClick={() => setIsEditing(true)} 
+                <Button
+                  onClick={() => setIsEditing(true)}
                   className="w-full mb-3"
                 >
                   <Edit2 size={16} className="mr-2" /> Edit Info
                 </Button>
               )}
 
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={() => setShowPasswordModal(true)}
                 className="w-full mb-3"
               >
@@ -197,13 +214,13 @@ export const Profile: React.FC<ProfileProps> = ({
             {!isEditing && (
               <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-6">
                 <h3 className="text-xl font-black mb-6 text-gray-800">Thông Tin Cá Nhân</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 rounded-xl p-4">
                     <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Tên Đầy Đủ</p>
                     <p className="text-lg font-bold text-gray-800 mt-2">{user.full_name || '—'}</p>
                   </div>
-                  
+
                   <div className="bg-gray-50 rounded-xl p-4">
                     <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Ngày Sinh</p>
                     <p className="text-lg font-bold text-gray-800 mt-2">
@@ -223,14 +240,14 @@ export const Profile: React.FC<ProfileProps> = ({
             {isEditing && (
               <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8">
                 <h3 className="text-2xl font-black mb-6 text-gray-800">Edit Personal Information</h3>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
                     <input
                       type="text"
                       value={formData.full_name || ''}
-                      onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                       placeholder="Enter full name"
                     />
@@ -241,7 +258,7 @@ export const Profile: React.FC<ProfileProps> = ({
                     <input
                       type="text"
                       value={formData.display_name || ''}
-                      onChange={(e) => setFormData({...formData, display_name: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                       placeholder="Enter display name"
                     />
@@ -252,7 +269,7 @@ export const Profile: React.FC<ProfileProps> = ({
                     <input
                       type="date"
                       value={formData.date_of_birth || ''}
-                      onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                     />
                   </div>
@@ -261,7 +278,7 @@ export const Profile: React.FC<ProfileProps> = ({
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Bio / About Me</label>
                     <textarea
                       value={formData.bio || ''}
-                      onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none h-24 resize-none"
                       placeholder="Tell us about yourself..."
                       maxLength={200}
@@ -269,15 +286,27 @@ export const Profile: React.FC<ProfileProps> = ({
                     <p className="text-xs text-gray-400 mt-1">{(formData.bio || '').length}/200</p>
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Avatar URL</label>
+                    <input
+                      type="url"
+                      value={formData.avatar_url || ''}
+                      onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Paste a direct image URL</p>
+                  </div>
+
                   <div className="flex gap-3 pt-4">
-                    <Button 
+                    <Button
                       onClick={handleUpdateProfile}
                       loading={isLoading}
                       className="flex-1"
                     >
                       Save Changes
                     </Button>
-                    <Button 
+                    <Button
                       variant="secondary"
                       onClick={() => {
                         setIsEditing(false);
@@ -285,7 +314,8 @@ export const Profile: React.FC<ProfileProps> = ({
                           full_name: user.full_name || '',
                           display_name: user.display_name || '',
                           date_of_birth: user.date_of_birth || '',
-                          bio: user.bio || ''
+                          bio: user.bio || '',
+                          avatar_url: user.avatar_url || ''
                         });
                       }}
                       className="flex-1"
@@ -300,7 +330,7 @@ export const Profile: React.FC<ProfileProps> = ({
             {/* Match History */}
             <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8">
               <h3 className="text-2xl font-black mb-6 text-gray-800">Match History</h3>
-              
+
               {matchHistory.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   No matches played yet. Start playing to build your history!
@@ -311,21 +341,30 @@ export const Profile: React.FC<ProfileProps> = ({
                     <div key={match.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                       <div className="flex-1">
                         <div className="font-semibold text-gray-800">
-                          {match.game_type === 'tic-tac-toe' ? '🎮 Tic-Tac-Toe' : '● Caro'} 
+                          {match.game_type === 'tic-tac-toe' ? '🎮 Tic-Tac-Toe' : '● Caro'}
                           <span className="ml-3 text-sm text-gray-600">({match.mode})</span>
                         </div>
                         <div className="text-sm text-gray-600">
                           vs {match.opponent_name} • {new Date(match.played_at).toLocaleDateString()}
                         </div>
                       </div>
-                      
-                      <div className={`font-bold text-lg px-4 py-2 rounded-lg ${
-                        match.result === 'win' ? 'bg-green-100 text-green-700' :
+
+                      <div className={`font-bold text-lg px-4 py-2 rounded-lg ${match.result === 'win' ? 'bg-green-100 text-green-700' :
                         match.result === 'loss' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
                         {match.result === 'win' ? '✓ Win' : match.result === 'loss' ? '✗ Loss' : '= Draw'}
                       </div>
+
+                      {onReplayMatch && (
+                        <button
+                          onClick={() => onReplayMatch(match.id)}
+                          className="ml-3 p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition"
+                          title="Xem lại trận đấu"
+                        >
+                          <Eye size={18} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -340,14 +379,14 @@ export const Profile: React.FC<ProfileProps> = ({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 max-w-md w-full">
             <h2 className="text-2xl font-black mb-6 text-gray-800">Change Password</h2>
-            
+
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
                 <input
                   type="password"
                   value={passwordForm.oldPassword}
-                  onChange={(e) => setPasswordForm({...passwordForm, oldPassword: e.target.value})}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                   placeholder="Enter current password"
                 />
@@ -358,7 +397,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 <input
                   type="password"
                   value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                   placeholder="Enter new password"
                 />
@@ -369,7 +408,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 <input
                   type="password"
                   value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                   placeholder="Confirm new password"
                 />

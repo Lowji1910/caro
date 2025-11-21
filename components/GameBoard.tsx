@@ -11,17 +11,28 @@ interface GameBoardProps {
   lastMove: { r: number; c: number } | null;
   currentPlayer: PlayerId;
   disabled: boolean;
+  onUndo?: () => void;
 }
 
-const GameBoard: React.FC<GameBoardProps> = ({ 
-  board, 
-  type, 
-  onCellClick, 
-  winningLine, 
+const GameBoard: React.FC<GameBoardProps> = ({
+  board,
+  type,
+  onCellClick,
+  winningLine,
   lastMove,
-  disabled 
+  disabled,
+  onUndo
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isTicTacToe = type === 'tic-tac-toe';
+
+  useEffect(() => {
+    if (!isTicTacToe && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
+      container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+    }
+  }, [isTicTacToe, board]);
 
   // --- SAFETY CHECK QUAN TRỌNG ---
   // Nếu board chưa tải xong hoặc null, không render gì cả để tránh crash
@@ -32,16 +43,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
       </div>
     );
   }
-
-  const isTicTacToe = type === 'tic-tac-toe';
-
-  useEffect(() => {
-    if (!isTicTacToe && scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
-      container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
-    }
-  }, [isTicTacToe, board]); // Thêm dependency board
 
   const handleCenter = () => {
     if (scrollContainerRef.current) {
@@ -100,8 +101,21 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   if (isTicTacToe) {
     return (
-      <div className="aspect-square w-full max-w-[450px] mx-auto grid grid-cols-3 grid-rows-3 gap-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl shadow-xl border border-gray-300">
-        {board.map((row, r) => row.map((val, c) => renderCell(r, c, val)))}
+      <div className="relative w-full max-w-[450px] mx-auto">
+        <div className="absolute -top-12 right-0 flex gap-2 z-20">
+          {onUndo && (
+            <button
+              onClick={onUndo}
+              className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 text-red-500 border border-gray-300 transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Undo Request"
+            >
+              <span className="font-bold text-lg">↩</span>
+            </button>
+          )}
+        </div>
+        <div className="aspect-square w-full grid grid-cols-3 grid-rows-3 gap-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl shadow-xl border border-gray-300">
+          {board.map((row, r) => row.map((val, c) => renderCell(r, c, val)))}
+        </div>
       </div>
     );
   }
@@ -109,22 +123,31 @@ const GameBoard: React.FC<GameBoardProps> = ({
   // Caro Board
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center min-h-[300px]">
-       <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
-          <button onClick={handleCenter} className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-50 text-blue-600 border border-gray-300 transition-all hover:scale-110">
-            <Focus size={20} />
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+        <button onClick={handleCenter} className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-50 text-blue-600 border border-gray-300 transition-all hover:scale-110">
+          <Focus size={20} />
+        </button>
+        {onUndo && (
+          <button
+            onClick={onUndo}
+            className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-50 text-red-500 border border-gray-300 transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Undo Request"
+          >
+            <span className="font-bold text-lg">↩</span>
           </button>
-       </div>
+        )}
+      </div>
 
-      <div 
+      <div
         ref={scrollContainerRef}
         className="overflow-auto w-full h-full border-4 border-gray-400 bg-[#fdf6e3] shadow-lg rounded-2xl no-scrollbar relative"
-        style={{ 
+        style={{
           backgroundImage: 'radial-gradient(#c9a961 1.5px, transparent 1.5px)',
           backgroundSize: '24px 24px',
           maxHeight: '70vh'
         }}
       >
-        <div 
+        <div
           className="grid p-8 mx-auto bg-[#fdf6e3]"
           style={{
             gridTemplateColumns: `repeat(${board[0].length}, 40px)`,

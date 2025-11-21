@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // 👇 Thêm dòng này để cho phép Ngrok truy cập
+        allowedHosts: true, 
       },
       plugins: [react()],
       define: {

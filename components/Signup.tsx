@@ -4,13 +4,14 @@ import { COLORS, GRADIENTS } from '../constants';
 import Button from './Button';
 
 interface SignupProps {
-  onSignup: (username: string, password: string, display_name: string) => Promise<void>;
+  onSignup: (username: string, password: string, display_name: string, email: string) => Promise<void>;
   onBackToLogin: () => void;
 }
 
 export const Signup: React.FC<SignupProps> = ({ onSignup, onBackToLogin }) => {
   const [form, setForm] = useState({
     username: '',
+    email: '',
     password: '',
     confirmPassword: '',
     display_name: ''
@@ -25,6 +26,12 @@ export const Signup: React.FC<SignupProps> = ({ onSignup, onBackToLogin }) => {
       newErrors.username = 'Username is required';
     } else if (form.username.length < 3) {
       newErrors.username = 'Username must be at least 3 characters';
+    }
+
+    if (!form.email.trim()) {
+        newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+        newErrors.email = 'Email is invalid';
     }
 
     if (!form.password) {
@@ -52,7 +59,7 @@ export const Signup: React.FC<SignupProps> = ({ onSignup, onBackToLogin }) => {
 
     setIsLoading(true);
     try {
-      await onSignup(form.username, form.password, form.display_name);
+      await onSignup(form.username, form.password, form.display_name, form.email);
     } catch (err) {
       setErrors({ submit: err instanceof Error ? err.message : 'Signup failed' });
     } finally {
@@ -93,6 +100,22 @@ export const Signup: React.FC<SignupProps> = ({ onSignup, onBackToLogin }) => {
                 className={`w-full pl-12 pr-4 py-4 bg-white border-2 ${errors.username ? 'border-red-400' : 'border-gray-300'} focus:border-blue-400 rounded-xl outline-none transition-all font-medium text-gray-700`}
               />
               {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
+            </div>
+
+            {/* Email */}
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                type="email"
+                placeholder="Email Address"
+                value={form.email}
+                onChange={(e) => {
+                  setForm({...form, email: e.target.value});
+                  if (errors.email) setErrors({...errors, email: ''});
+                }}
+                className={`w-full pl-12 pr-4 py-4 bg-white border-2 ${errors.email ? 'border-red-400' : 'border-gray-300'} focus:border-blue-400 rounded-xl outline-none transition-all font-medium text-gray-700`}
+              />
+              {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
             </div>
 
             {/* Display Name */}

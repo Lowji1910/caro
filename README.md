@@ -36,7 +36,7 @@ Mở Terminal (Command Prompt) và thực hiện các bước sau:
 
 2.  Cài đặt các thư viện cần thiết:
     ```bash
-    ip install -r requirements.txtp
+    pip install -r requirements.txtp
     ```
 
 3.  **Cấu hình kết nối Database**:

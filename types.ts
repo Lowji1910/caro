@@ -5,7 +5,7 @@ export type CellValue = 0 | PlayerId;
 export type GameType = 'tic-tac-toe' | 'caro';
 export type GameMode = 'ranked' | 'practice' | 'local';
 export type AIDifficulty = 'easy' | 'medium' | 'hard';
-export type ViewState = 'AUTH' | 'SIGNUP' | 'DASHBOARD' | 'MATCHMAKING' | 'GAME' | 'PROFILE' | 'PRACTICE_DIFFICULTY';
+export type ViewState = 'AUTH' | 'SIGNUP' | 'DASHBOARD' | 'MATCHMAKING' | 'GAME' | 'PROFILE' | 'PRACTICE_DIFFICULTY' | 'REPLAY' | 'PUBLIC_PROFILE';
 
 export interface UserProfile {
   id: number;
