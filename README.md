@@ -1,105 +1,251 @@
-# 🎮 Tic-Tac-Toe & Caro Multiplayer (Ranked System)
+# 🎮 Game Cờ Caro & Tic-Tac-Toe Online
 
-Dự án game Cờ Caro và Tic-Tac-Toe thời gian thực (Real-time) với hệ thống Xếp hạng (Ranking), Chat và Matchmaking.
+> Game cờ caro và tic-tac-toe thời gian thực với hệ thống xếp hạng, matchmaking và AI thông minh.
+
+[![GitHub](https://img.shields.io/badge/GitHub-Lowji1910%2Fcaro-blue)](https://github.com/Lowji1910/caro)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+---
+
+## ✨ Tính Năng Nổi Bật
+
+### 🏆 Hệ Thống Xếp Hạng
+- **500 cấp độ** với 9 rank tier (Tân Thủ → Huyền Thánh)
+- Tính điểm Elo: Thắng +25, Thua -10
+- Bảng xếp hạng realtime với tier badge đẹp mắt
+- Lịch sử level-up được lưu trữ
+
+### 🎯 Chế Độ Chơi
+- **Ranked Mode**: Đấu xếp hạng với người chơi thật
+- **Practice Mode**: Luyện tập với AI (3 độ khó)
+- **Matchmaking**: Tự động ghép cặp đối thủ cùng rank
+- **Replay System**: Xem lại trận đấu đã chơi
+
+### 🤖 AI Thông Minh
+- Thuật toán Minimax với Alpha-Beta Pruning
+- Đánh giá vị trí thông minh (phòng thủ & tấn công)
+- Caro AI: Phát hiện nước 3, 4 liên tiếp và chặn đứng
+- 3 độ khó: Dễ, Trung bình, Khó
+
+### 🎨 Giao Diện Hiện Đại
+- Responsive design (chơi được trên mobile)
+- Dark mode với glassmorphism effect
+- Animation mượt mà
+- Avatar system với URL upload
+
+### 💬 Tính Năng Khác
+- Real-time multiplayer (Socket.IO)
+- Profile cá nhân với thống kê chi tiết
+- Match history với replay
+- Timeout detection (30s/nước)
+
+---
 
 ## 🛠️ Công Nghệ Sử Dụng
 
-*   **Frontend**: React 19, Tailwind CSS, Lucide Icons (Giao diện đẹp, Responsive).
-*   **Backend**: Python Flask, Flask-SocketIO (Xử lý logic game, AI Minimax, Real-time communication).
-*   **Database**: MySQL (Lưu trữ người dùng, lịch sử đấu, bảng xếp hạng).
+### Frontend
+- **React 19** - UI framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **Vite** - Build tool
+- **Socket.IO Client** - Real-time communication
+- **Lucide Icons** - Icon library
+
+### Backend
+- **Python 3.8+** - Server language
+- **Flask** - Web framework
+- **Flask-SocketIO** - WebSocket support
+- **MySQL** - Database
+- **mysql-connector-python** - DB driver
 
 ---
 
-## ⚙️ Hướng Dẫn Cài Đặt & Chạy
+## 📦 Cài Đặt & Chạy Thử
 
-### 1. Yêu cầu hệ thống (Prerequisites)
-*   **Python**: Phiên bản 3.8 trở lên.
-*   **Node.js**: (Tùy chọn nếu bạn muốn build frontend, hiện tại code chạy trực tiếp trong môi trường React tích hợp).
-*   **MySQL**: Khuyến nghị cài đặt **XAMPP** hoặc **MySQL Workbench**.
+### 1️⃣ Yêu Cầu Hệ Thống
 
-### 2. Cài đặt Database (MySQL)
+- **Python 3.8+** ([Download](https://www.python.org/downloads/))
+- **Node.js 16+** ([Download](https://nodejs.org/))
+- **MySQL** (XAMPP hoặc MySQL Workbench)
+- **Git** ([Download](https://git-scm.com/))
 
-1.  Mở **XAMPP Control Panel** và khởi động module **Apache** và **MySQL**.
-2.  Truy cập **phpMyAdmin** (thường là `http://localhost/phpmyadmin`).
-3.  Tạo một Database mới tên là: `tic_tac_toe_db`.
-4.  Chọn database vừa tạo, vào tab **Import** (Nhập).
-5.  Chọn file `database.sql` (nằm trong thư mục gốc của dự án) và nhấn **Import** để tạo các bảng dữ liệu (`users`, `player_rank`, `match_history`...).
+### 2️⃣ Clone Repository
 
-### 3. Cài đặt Backend (Python Flask)
+```bash
+git clone https://github.com/Lowji1910/caro.git
+cd caro
+```
 
-Mở Terminal (Command Prompt) và thực hiện các bước sau:
+### 3️⃣ Setup Database
 
-1.  Di chuyển vào thư mục backend:
-    ```bash
-    cd backend
-    ```
+1. Mở **XAMPP** và start **MySQL**
+2. Truy cập **phpMyAdmin** (`http://localhost/phpmyadmin`)
+3. Tạo database `tic_tac_toe_db`
+4. Import file `database.sql`
+5. Chạy các migration:
+   ```sql
+   -- Thêm cột moves (cho replay)
+   ALTER TABLE match_history ADD COLUMN moves JSON DEFAULT NULL;
+   
+   -- Import từ file backend/migrations/add_ranking_tables.sql
+   ```
 
-2.  Cài đặt các thư viện cần thiết:
-    ```bash
-    pip install -r requirements.txtp
-    ```
+### 4️⃣ Setup Backend
 
-3.  **Cấu hình kết nối Database**:
-    *   Mở file `backend/app.py`.
-    *   Tìm đoạn code cấu hình `db_config`.
-    *   Đảm bảo `password` khớp với mật khẩu MySQL của bạn (mặc định XAMPP là rỗng `""`).
-    ```python
-    db_config = {
-        'user': 'root',
-        'password': '',  # Điền mật khẩu MySQL của bạn nếu có
-        'host': 'localhost',
-        'database': 'tic_tac_toe_db'
-    }
-    ```
+```bash
+cd backend
 
-4.  Khởi chạy Server:
-    ```bash
-    python app.py
-    ```
-    *   Server sẽ chạy tại địa chỉ: `http://localhost:5000`.
-    *   Bạn sẽ thấy thông báo: `Running on http://127.0.0.1:5000`.
+# Cài đặt dependencies
+pip install -r requirements.txt
 
-### 4. Chạy Frontend
+# Chạy server
+python app.py
+```
 
-Trong môi trường phát triển này, Frontend (React) đã được cấu hình sẵn. Bạn chỉ cần đảm bảo Backend đang chạy.
+Server chạy tại: `http://localhost:5000`
 
-*   Mở trình duyệt, ứng dụng sẽ tự động kết nối tới `http://localhost:5000`.
-*   **Tài khoản mặc định** (do Database mới tạo chưa có user, bạn có thể đăng nhập để tạo mới):
-    *   Hệ thống sẽ tự động tạo user nếu chưa tồn tại khi đăng nhập lần đầu (logic trong `backend/app.py` hàm `/api/login`).
-    *   Thử nhập: Username: `player1`, Password: `password`.
+### 5️⃣ Setup Frontend
+
+```bash
+# Về thư mục gốc
+cd ..
+
+# Cài đặt dependencies
+npm install
+
+# Chạy dev server
+npm run dev
+```
+
+Frontend chạy tại: `http://localhost:5173`
+
+### 6️⃣ Chơi Thử!
+
+1. Mở trình duyệt vào `http://localhost:5173`
+2. Sign up tài khoản mới
+3. Chọn chế độ chơi và bắt đầu!
 
 ---
 
-## 📂 Cấu Trúc Thư Mục
+## 🚀 Deploy Lên Internet
+
+Xem hướng dẫn chi tiết trong file [DEPLOY_GUIDE.md](DEPLOY_GUIDE.md)
+
+**TL;DR:**
+- **Frontend**: Vercel (miễn phí)
+- **Backend**: Render (free tier)
+- **Database**: PlanetScale (miễn phí)
+
+---
+
+## 📁 Cấu Trúc Thư Mục
 
 ```
-.
+caro/
 ├── backend/
-│   ├── app.py           # Server chính (Socket.IO, API)
-│   ├── game_engine.py   # Logic game, AI Minimax, Check Winner
-│   └── requirements.txt # Thư viện Python
-├── components/          # React Components (Board, Header, Button...)
-├── services/            # (Đã deprecated, logic chuyển về backend)
-├── App.tsx              # Main React App
-├── database.sql         # Script tạo database
-└── README.md            # Hướng dẫn sử dụng
+│   ├── app.py                  # Flask server chính
+│   ├── config.py               # Cấu hình
+│   ├── database/               # Database connection
+│   ├── game/                   # Game engine & AI
+│   │   ├── engine.py           # Logic game
+│   │   └── ai.py               # Minimax AI
+│   ├── routes/                 # API endpoints
+│   ├── services/               # Business logic
+│   │   ├── user_service.py
+│   │   ├── match_service.py
+│   │   ├── rank_service.py
+│   │   └── leaderboard_service.py
+│   ├── sockets/                # Socket.IO handlers
+│   ├── migrations/             # SQL migrations
+│   └── tests/                  # Unit tests
+│
+├── components/                 # React components
+│   ├── GameBoard.tsx           # Bàn cờ
+│   ├── ReplayBoard.tsx         # Replay viewer
+│   ├── Header.tsx              # Header với avatar
+│   └── Profile.tsx             # Trang profile
+│
+├── utils/                      # Utilities
+├── App.tsx                     # Main App
+├── types.ts                    # TypeScript types
+├── database.sql                # Schema SQL
+└── README.md                   # File này
 ```
-
-## 🤖 Tính Năng Game
-
-1.  **Ranked Mode (Đấu Xếp Hạng)**:
-    *   Thắng: Cộng điểm Rank (+25).
-    *   Thua: Trừ điểm Rank (-10).
-    *   Hệ thống Rank: Bronze -> Silver -> Gold -> Crystal.
-
-2.  **Practice Mode (Luyện Tập)**:
-    *   Đấu với AI thông minh (Minimax + Alpha-Beta Pruning).
-    *   AI Caro có khả năng chặn nước 3, 4 và tấn công.
-
-3.  **Real-time**:
-    *   Cập nhật bàn cờ tức thì qua Socket.IO.
-    *   Hiển thị người đang online.
 
 ---
 
-**Chúc bạn chơi game vui vẻ! 🎮**
+## 🎮 Hướng Dẫn Chơi
+
+### Tic-Tac-Toe (3x3)
+- Xếp 3 ô liên tiếp (ngang/dọc/chéo) để thắng
+- Hòa nếu hết ô mà không ai thắng
+
+### Caro (15x20)
+- Xếp 5 ô liên tiếp để thắng
+- Không giới hạn số nước đi
+- Có thể block đối thủ
+
+### Điều Khiển
+- **Click chuột**: Đặt quân
+- **Replay**: Dùng nút ◀ ▶ để xem lại
+
+---
+
+## 🏅 Hệ Thống Rank
+
+| Rank | Tên | Cấp độ | Màu |
+|------|-----|--------|-----|
+| 🆕 | Tân Thủ | 1-10 | Xám |
+| 🥉 | Đồng Học | 11-30 | Đồng |
+| 🥈 | Bạc Học | 31-50 | Bạc |
+| 🌱 | Nhập Môn | 51-100 | Xanh lá |
+| 💎 | Tinh Thông | 101-150 | Xanh dương |
+| 💜 | Đại Sư | 151-200 | Tím |
+| 🧡 | Tôn Giả | 201-300 | Cam |
+| ❤️ | Chí Tôn | 301-400 | Đỏ |
+| 👑 | Huyền Thánh | 401-500 | Vàng |
+
+---
+
+## 🤝 Đóng Góp
+
+Mọi đóng góp đều được hoan nghênh! Hãy:
+
+1. Fork repo này
+2. Tạo branch mới (`git checkout -b feature/TinhNangMoi`)
+3. Commit changes (`git commit -m 'Thêm tính năng X'`)
+4. Push lên branch (`git push origin feature/TinhNangMoi`)
+5. Tạo Pull Request
+
+---
+
+## 📝 License
+
+Project này được phát hành dưới giấy phép MIT. Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
+
+---
+
+## 👨‍💻 Tác Giả
+
+**Lowji1910**
+- GitHub: [@Lowji1910](https://github.com/Lowji1910)
+- Project: [Caro Game](https://github.com/Lowji1910/caro)
+
+---
+
+## 🙏 Credits
+
+- Icons: [Lucide Icons](https://lucide.dev/)
+- Hosting: [Vercel](https://vercel.com/), [Render](https://render.com/)
+- Database: [PlanetScale](https://planetscale.com/)
+
+---
+
+## 📸 Screenshots
+
+_Thêm screenshots của game ở đây_
+
+---
+
+**⭐ Nếu bạn thấy project hay, hãy cho 1 star nhé! ⭐**
+
