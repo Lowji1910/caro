@@ -11,16 +11,17 @@
 
 ### 🏆 Hệ Thống Xếp Hạng Đầy Đủ
 - **100,000 cấp độ** (Level 1-100,000) với hệ thống XP progression
-- **10 Tier Ranks** từ Tân Thủ đến Huyền Thánh (lưu trong bảng `tiers`)
-- Tính điểm Elo: **Thắng +25**, **Thua -10**
+- **10 Tier Ranks** từ Tân Thủ đến Thần Thoại (lưu trong bảng `tiers`)
+- Tính điểm Elo: **Thắng +25 XP**, **Thua -10 XP**
 - Bảng xếp hạng realtime với tier badge màu sắc đẹp mắt
 - Mỗi level cần 100 XP để lên cấp
 
 ### 🎯 Chế Độ Chơi
-- **Ranked Mode**: Đấu xếp hạng với người chơi thật qua matchmaking
+- **Ranked Mode**: Đấu xếp hạng với người chơi thật qua matchmaking tự động
 - **Practice Mode**: Luyện tập với AI (3 độ khó: Easy, Medium, Hard)
 - **Matchmaking Tự Động**: Ghép cặp đối thủ realtime qua Socket.IO
 - **Replay System**: Xem lại trận đấu với dữ liệu moves từ database
+- **In-Game Chat**: Trò chuyện realtime trong trận đấu
 
 ### 🤖 AI Thông Minh
 - **Thuật toán Minimax** với Alpha-Beta Pruning
@@ -35,8 +36,10 @@
 - **Avatar System** - Upload avatar qua URL
 - **Font Fredoka** - Typography chuyên nghiệp
 
-### 💬 Tính Năng Khác
+### 💬 Tính Năng Nổi Bật Khác
 - **Real-time Multiplayer** qua Socket.IO
+- **Live Chat** trong trận đấu với emoji support
+- **Auto-Forfeit**: Rời trận = thua ngay (có modal xác nhận)
 - **Profile cá nhân** với thống kê chi tiết
 - **Match History** với replay đầy đủ
 - **Timeout Detection** (30s/nước đi)
@@ -99,7 +102,7 @@ cd caro
 
 **Database sẽ có:**
 - 100,000 game levels (level 1-100,000)
-- 10 tiers (Tân Thủ → Huyền Thánh)
+- 10 tiers (Tân Thủ → Thần Thoại)
 - 6 user mẫu (admin, test_user, test_p1, test_p2, etc.)
 - 16 match history mẫu
 
@@ -118,6 +121,9 @@ pip install -r requirements.txt
 # DB_NAME=tic_tac_toe_db
 # SECRET_KEY=your_secret_key
 # FRONTEND_ORIGIN=*
+
+# Chạy migration password (nếu cần)
+python migrate_passwords.py
 
 # Chạy server
 python app.py
@@ -166,15 +172,14 @@ Xem hướng dẫn chi tiết trong file [DEPLOY_GUIDE.md](DEPLOY_GUIDE.md)
 ---
 
 ## 📁 Cấu Trúc Thư Mục
-## 📁 Cấu Trúc Thư Mục
 
 ```
-caro/
 caro/
 ├── backend/
 │   ├── app.py                      # Flask + SocketIO server chính
 │   ├── config.py                   # Cấu hình (DB, game, ranking)
 │   ├── requirements.txt            # Python dependencies
+│   ├── migrate_passwords.py        # Script migration password
 │   │
 │   ├── database/
 │   │   └── db.py                   # MySQL connection & query utilities
@@ -195,8 +200,9 @@ caro/
 │   │   └── leaderboard_service.py  # Get top players
 │   │
 │   ├── sockets/
+│   │   ├── state.py                # Shared state (games, queues, SID mapping)
 │   │   ├── matchmaking.py          # Matchmaking socket handlers
-│   │   └── game.py                 # Game socket handlers (move, undo, timeout)
+│   │   └── game.py                 # Game socket handlers (move, undo, timeout, chat, leave)
 │   │
 │   ├── migrations/                 # SQL migration files
 │   └── tests/                      # Unit tests
@@ -210,6 +216,7 @@ caro/
 │   ├── Signup.tsx                  # Form đăng ký
 │   ├── RankInfoModal.tsx           # Modal hiển thị thông tin rank
 │   ├── PracticeDifficultySelector.tsx  # Chọn độ khó AI
+│   ├── ChatBox.tsx                 # In-game chat component
 │   └── LevelSelector.tsx           # Level selector component
 │
 ├── utils/
@@ -305,8 +312,8 @@ caro/
   - ⏱️ Giới hạn thời gian 30s/nước
   - 🔄 Undo Request (xin đi lại, cần đối thủ đồng ý)
   - ⚠️ Timeout Detection (claim thắng nếu đối thủ hết giờ)
-  - 💬 Live Chat (trò chuyện trong trận)
-  - 🚪 Leave Game (rời trận = thua ngay lập tức)
+  - 💬 Live Chat (trò chuyện trong trận, max 200 ký tự)
+  - 🚪 Leave Game (rời trận = thua ngay lập tức, có modal xác nhận)
 - **Lưu lịch sử**: Tất cả trận đấu được lưu vào database
 - **Replay**: Có thể xem lại sau này
 
@@ -325,7 +332,8 @@ caro/
 
 - **Click chuột trái**: Đặt quân vào ô trống
 - **Nút "Undo"**: Xin đi lại (chỉ ranked, cần đối thủ đồng ý)
-- **Nút "Leave Game"**: Rời trận (sẽ có cảnh báo nếu game đang chơi)
+- **Nút "Leave Game"**: Rời trận (sẽ có modal xác nhận nếu game đang chơi)
+- **Chat Box**: Nhập tin nhắn và Enter để gửi (max 200 ký tự)
 - **Replay Controls**:
   - ◀ **Previous**: Lùi 1 nước
   - ▶ **Next**: Tiến 1 nước
@@ -433,12 +441,12 @@ Rank Score: 12,650 pts
 
 ### User
 - `GET /api/user/:id` - Lấy thông tin user
-- `PUT /api/user/:id` - Cập nhật profile
+- `PUT /api/user/:id` - Cập nhật profile (display_name, avatar_url)
 - `GET /api/public/:id` - Lấy public profile
 - `GET /api/user/:id/matches` - Lấy match history
 
 ### Leaderboard
-- `GET /api/leaderboard` - Top 100 players
+- `GET /api/leaderboard` - Top 100 players theo rank_score
 
 ### Match
 - `GET /api/match/:id` - Lấy chi tiết trận đấu (cho replay)
@@ -448,15 +456,18 @@ Rank Score: 12,650 pts
 ## 🔌 Socket.IO Events
 
 ### Client → Server
-- `join_matchmaking` - Tham gia matchmaking
-- `make_move` - Thực hiện nước đi
-- `request_undo` - Xin đi lại
-- `resolve_undo` - Phản hồi yêu cầu undo
-- `claim_timeout` - Claim thắng do timeout
+- `join_matchmaking` - Tham gia matchmaking (userId, type, mode, difficulty)
+- `make_move` - Thực hiện nước đi (roomId, r, c, player)
+- `send_chat` - Gửi tin nhắn chat (roomId, message, sender, senderId)
+- `request_undo` - Xin đi lại (roomId)
+- `resolve_undo` - Phản hồi yêu cầu undo (roomId, accept)
+- `claim_timeout` - Claim thắng do timeout (roomId)
+- `leave_game` - Rời trận đấu (roomId)
 
 ### Server → Client
-- `match_found` - Tìm thấy trận đấu
-- `game_update` - Cập nhật trạng thái game
+- `match_found` - Tìm thấy trận đấu (roomId, opponent, board, gameType, mode, playerNumber)
+- `game_update` - Cập nhật trạng thái game (board, currentPlayer, winner, winningLine, lastMove)
+- `receive_chat` - Nhận tin nhắn chat (sender, senderId, message)
 - `undo_requested` - Nhận yêu cầu undo từ đối thủ
 - `undo_declined` - Undo bị từ chối
 
@@ -527,7 +538,8 @@ _Coming soon..._
 
 ## 🔮 Roadmap
 
-- [ ] Chat trong game
+- [x] Chat trong game
+- [x] Auto-forfeit khi leave game
 - [ ] Spectator mode
 - [ ] Tournament system
 - [ ] Achievement badges
