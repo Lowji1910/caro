@@ -7,7 +7,7 @@ from game.engine import GameEngine
 from game.ai import AIPlayer
 from services.rank_service import RankService
 from services.match_service import MatchService
-from sockets.matchmaking import get_games
+from sockets.state import get_games, SID_TO_ROOM
 
 
 def register_game_handlers(socketio):
@@ -87,13 +87,24 @@ def register_game_handlers(socketio):
             - roomId: str
             - message: str
             - sender: str
+            - senderId: int
         """
         room_id = data.get('roomId')
-        message = data.get('message')
+        message = data.get('message', '').strip()
         sender = data.get('sender')
+        sender_id = data.get('senderId')
+        
+        # Validation
+        if not message or len(message) > 200:
+            return
+        
+        # Sanitize (escape HTML special characters)
+        import html
+        message = html.escape(message)
         
         emit('receive_chat', {
             'sender': sender,
+            'senderId': sender_id,
             'message': message
         }, room=room_id)
 
@@ -203,6 +214,87 @@ def register_game_handlers(socketio):
         }, room=room_id)
         
         _handle_end_game(game, winner)
+
+    @socketio.on('leave_game')
+    def handle_leave_game(data):
+        """
+        Handle player leaving the game explicitly.
+        
+        Data:
+            - roomId: str
+        """
+        room_id = data.get('roomId')
+        print(f'[LEAVE_GAME] Player {request.sid} leaving room {room_id}')
+        _handle_player_leave(room_id, request.sid)
+
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        """Handle client disconnection."""
+        print(f'Client disconnected: {request.sid}')
+        
+        # To properly handle disconnect, we need to know which room the user was in.
+        if request.sid in SID_TO_ROOM:
+            room_id = SID_TO_ROOM[request.sid]
+            print(f'[DISCONNECT] Player {request.sid} was in room {room_id}')
+            _handle_player_leave(room_id, request.sid)
+            del SID_TO_ROOM[request.sid]
+
+def _handle_player_leave(room_id, sid):
+    """Helper to handle player leaving logic."""
+    games = get_games()
+    game = games.get(room_id)
+    
+    print(f'[_handle_player_leave] room_id={room_id}, sid={sid}')
+    
+    if not game:
+        print(f'[_handle_player_leave] Game not found for room {room_id}')
+        return
+    
+    # Initialize winner to 0 if not present
+    if 'winner' not in game:
+        game['winner'] = 0
+        
+    # If game is already over, do nothing
+    if game.get('winner', 0) != 0:
+        print(f'[_handle_player_leave] Game already over, winner={game.get("winner")}')
+        return
+
+    print(f'[_handle_player_leave] Game sids: {game.get("sids")}')
+    
+    # Identify which player left
+    leaver_player = None
+    if 'sids' in game:
+        for p_num, p_sid in game['sids'].items():
+            if p_sid == sid:
+                leaver_player = p_num
+                break
+    
+    print(f'[_handle_player_leave] Leaver player: {leaver_player}')
+    
+    if leaver_player is None:
+        print(f'[_handle_player_leave] Could not identify leaver')
+        return
+
+    # Determine winner (the other player)
+    winner = 2 if leaver_player == 1 else 1
+    
+    print(f'[_handle_player_leave] Winner determined: player {winner}')
+    
+    # Update game state
+    game['winner'] = winner
+    
+    # Broadcast game end
+    emit('game_update', {
+        'board': game['board'],
+        'currentPlayer': 0, # Game over
+        'winner': winner,
+        'winningLine': None,
+        'lastMove': None
+    }, room=room_id)
+    
+    print(f'[_handle_player_leave] Emitted game_update to room {room_id}')
+    
+    _handle_end_game(game, winner)
 
 
 def _handle_end_game(game, winner):

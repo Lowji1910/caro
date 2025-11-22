@@ -7,7 +7,7 @@ import {
 import { io, Socket } from 'socket.io-client';
 import {
   UserProfile, ViewState, MatchConfig,
-  GameState, GameMode, AIDifficulty, GameType, CellValue
+  GameState, GameMode, AIDifficulty, GameType, CellValue, ChatMessage
 } from './types';
 import { COLORS, GRADIENTS } from './constants';
 import { getTierInfo } from './utils/tierUtils';
@@ -19,6 +19,7 @@ import Profile from './components/Profile';
 import RankInfoModal from './components/RankInfoModal';
 import PracticeDifficultySelector from './components/PracticeDifficultySelector';
 import ReplayBoard from './components/ReplayBoard';
+import ChatBox from './components/ChatBox';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const SOCKET_URL = BACKEND_URL;
@@ -52,10 +53,12 @@ export default function App() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
   const [showRankInfo, setShowRankInfo] = useState<'tic-tac-toe' | 'caro' | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   // Replay & Public Profile State
   const [publicProfileData, setPublicProfileData] = useState<UserProfile | null>(null);
   const [replayData, setReplayData] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   // --- INIT EFFECT (Check localStorage) ---
   useEffect(() => {
@@ -127,6 +130,15 @@ export default function App() {
 
     socket.on('undo_declined', () => {
       alert("Đối thủ không đồng ý cho bạn đi lại. Hãy tập trung hơn!");
+    });
+
+    socket.on('receive_chat', (data: any) => {
+      setChatMessages(prev => [...prev, {
+        sender: data.sender,
+        senderId: data.senderId,
+        message: data.message,
+        timestamp: Date.now()
+      }]);
     });
 
     return () => {
@@ -281,8 +293,27 @@ export default function App() {
     alert("Đã gửi yêu cầu, đang chờ đối thủ...");
   };
 
+  const handleLeaveGameClick = () => {
+    // If game is still ongoing, show confirmation
+    if (match?.id && gameState.winner === 0) {
+      setShowLeaveConfirm(true);
+    } else {
+      // Game already ended, just return to dashboard
+      returnToDashboard();
+    }
+  };
+
+  const confirmLeaveGame = () => {
+    setShowLeaveConfirm(false);
+    returnToDashboard();
+  };
+
   const returnToDashboard = async () => {
+    if (match?.id && gameState.winner === 0) {
+      socketRef.current?.emit('leave_game', { roomId: match.id });
+    }
     setMatch(null);
+    setChatMessages([]);
     setPracticeLoading(false);
     setView('DASHBOARD');
 
@@ -318,6 +349,17 @@ export default function App() {
   const handlePracticeBack = () => {
     setPracticeLoading(false);
     setView('DASHBOARD');
+  };
+
+  const handleSendChatMessage = (message: string) => {
+    if (!socketRef.current || !match?.id || !user) return;
+
+    socketRef.current.emit('send_chat', {
+      roomId: match.id,
+      message: message.trim(),
+      sender: user.display_name,
+      senderId: user.id
+    });
   };
 
 
@@ -574,7 +616,7 @@ export default function App() {
         {view === 'GAME' && match && (
           <div className="flex flex-col lg:flex-row min-h-[calc(100vh-96px)] gap-4">
             <div className="w-full lg:w-80 flex flex-col gap-4 shrink-0">
-              <Button variant="secondary" size="sm" className="self-start" onClick={returnToDashboard}>
+              <Button variant="secondary" size="sm" className="self-start" onClick={handleLeaveGameClick}>
                 <ChevronLeft size={16} /> Leave Game
               </Button>
 
@@ -647,9 +689,47 @@ export default function App() {
                 />
               </div>
             </div>
+
+            {/* Chat Box */}
+            <div className="w-full lg:w-80 shrink-0">
+              <ChatBox
+                messages={chatMessages}
+                currentUserId={user?.id || 0}
+                onSendMessage={handleSendChatMessage}
+                disabled={gameState.winner !== 0}
+              />
+            </div>
           </div>
         )}
       </main>
+
+      {/* Leave Game Confirmation Modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 border border-gray-200">
+            <h2 className="text-2xl font-black text-gray-800 mb-4">Xác nhận rời trận</h2>
+            <p className="text-gray-700 mb-2">Bạn có chắc muốn rời khỏi trận đấu?</p>
+            <p className="text-red-600 font-semibold text-sm mb-6">
+              ⚠️ Khi rời khỏi trận đấu giữa chừng, bạn sẽ bị xử thua ngay lập tức.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => setShowLeaveConfirm(false)}
+              >
+                Không, ở lại
+              </Button>
+              <Button
+                className="flex-1 !bg-red-500 hover:!bg-red-600"
+                onClick={confirmLeaveGame}
+              >
+                Có, rời trận
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rank Info Modals */}
       <RankInfoModal

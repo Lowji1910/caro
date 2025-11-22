@@ -5,15 +5,7 @@ from flask import request
 from flask_socketio import emit, join_room
 from game.engine import GameEngine
 from services.user_service import UserService
-
-# Global matchmaking queue
-matchmaking_queue = {
-    'tic-tac-toe': [],
-    'caro': []
-}
-
-# Global games state
-games = {}
+from sockets.state import games, matchmaking_queue, SID_TO_ROOM
 
 
 def register_matchmaking_handlers(socketio):
@@ -54,12 +46,14 @@ def _handle_practice_mode(socketio, user_id, game_type, difficulty, user_name):
     
     room_id = str(uuid.uuid4())
     join_room(room_id)
+    SID_TO_ROOM[request.sid] = room_id
     
     board = GameEngine.create_board(game_type)
     games[room_id] = {
         'board': board,
         'turn': 1,
         'players': {1: user_id, 2: 'AI'},
+        'sids': {1: request.sid, 2: 'ai'},
         'type': game_type,
         'mode': 'practice',
         'difficulty': difficulty,
@@ -96,11 +90,15 @@ def _handle_ranked_mode(socketio, user_id, game_type, user_name):
         join_room(room_id)
         join_room(room_id, sid=opponent['sid'])
         
+        SID_TO_ROOM[request.sid] = room_id
+        SID_TO_ROOM[opponent['sid']] = room_id
+        
         board = GameEngine.create_board(game_type)
         games[room_id] = {
             'board': board,
             'turn': 1,
             'players': {1: opponent['userId'], 2: user_id},
+            'sids': {1: opponent['sid'], 2: request.sid},
             'type': game_type,
             'mode': 'ranked',
             'history': []
@@ -130,13 +128,3 @@ def _handle_ranked_mode(socketio, user_id, game_type, user_name):
     else:
         # Add to queue
         queue.append({'userId': user_id, 'sid': request.sid, 'display_name': user_name})
-
-
-def get_games():
-    """Get current games state."""
-    return games
-
-
-def get_matchmaking_queue():
-    """Get current matchmaking queues."""
-    return matchmaking_queue
