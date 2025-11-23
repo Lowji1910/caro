@@ -26,6 +26,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isTicTacToe = type === 'tic-tac-toe';
 
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const [hasDragged, setHasDragged] = React.useState(false);
+
   useEffect(() => {
     if (!isTicTacToe && scrollContainerRef.current) {
       const container = scrollContainerRef.current;
@@ -52,6 +56,49 @@ const GameBoard: React.FC<GameBoardProps> = ({
         left: (container.scrollWidth - container.clientWidth) / 2,
         behavior: 'smooth'
       });
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (isTicTacToe || !scrollContainerRef.current) return;
+    setIsDragging(true);
+    setHasDragged(false);
+    setDragStart({
+      x: e.pageX,
+      y: e.pageY,
+      scrollLeft: scrollContainerRef.current.scrollLeft,
+      scrollTop: scrollContainerRef.current.scrollTop
+    });
+    // Change cursor to grabbing
+    scrollContainerRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - dragStart.x;
+    const y = e.pageY - dragStart.y;
+
+    // If moved more than 5px, consider it a drag action (prevent click)
+    if (Math.abs(x) > 5 || Math.abs(y) > 5) {
+      setHasDragged(true);
+    }
+
+    scrollContainerRef.current.scrollLeft = dragStart.scrollLeft - x;
+    scrollContainerRef.current.scrollTop = dragStart.scrollTop - y;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.style.cursor = 'default';
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.style.cursor = 'default';
     }
   };
 
@@ -86,7 +133,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     return (
       <div
         key={`${r}-${c}`}
-        onClick={() => !disabled && value === 0 && onCellClick(r, c)}
+        onClick={() => !disabled && value === 0 && !hasDragged && onCellClick(r, c)}
         className={cellBaseClass}
         style={{
           boxShadow: isTicTacToe ? '0 6px 12px -2px rgba(0, 0, 0, 0.15)' : 'inset 0 0 0 1px rgba(0,0,0,0.1)',
@@ -140,7 +187,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
       <div
         ref={scrollContainerRef}
-        className="overflow-auto w-full h-full border-4 border-gray-400 bg-[#fdf6e3] shadow-lg rounded-2xl no-scrollbar relative"
+        className="overflow-auto w-full h-full border-4 border-gray-400 bg-[#fdf6e3] shadow-lg rounded-2xl no-scrollbar relative cursor-grab active:cursor-grabbing"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         style={{
           backgroundImage: 'radial-gradient(#c9a961 1.5px, transparent 1.5px)',
           backgroundSize: '24px 24px',

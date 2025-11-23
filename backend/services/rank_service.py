@@ -10,19 +10,19 @@ class RankService:
     """Handles ranking, leveling, and rank point management."""
     
     @staticmethod
-    def get_level_from_score(rank_score):
+    def get_level_from_score(xp):
         """
-        Query database to find level corresponding to score.
-        Logic: Find highest level where required_score <= current score.
+        Query database to find level corresponding to XP.
+        Logic: Find highest level where required_score <= current XP.
         
         Args:
-            rank_score: User's current rank score
+            xp: User's current XP
             
         Returns:
             User level (1-500)
         """
-        # Negative scores default to level 1
-        if rank_score < 0:
+        # Negative XP default to level 1
+        if xp < 0:
             return 1
         
         query = """
@@ -32,7 +32,7 @@ class RankService:
             ORDER BY level DESC 
             LIMIT 1
         """
-        result = DatabaseQuery.execute_query(query, (rank_score,), fetch_one=True)
+        result = DatabaseQuery.execute_query(query, (xp,), fetch_one=True)
         
         # Return level if found, else default to 1
         return result['level'] if result else 1
@@ -63,37 +63,38 @@ class RankService:
         return result
     
     @staticmethod
-    def log_level_change(user_id, level, rank_score):
+    def log_level_change(user_id, level, xp):
         """
         Log a user's level change to history.
         
         Args:
             user_id: User's ID
             level: New level
-            rank_score: New rank score
+            xp: New XP
         
         Returns:
             True if logged, False otherwise
         """
         query = """
-            INSERT INTO user_levels_history (user_id, level, rank_score)
+            INSERT INTO user_levels_history (user_id, level, xp)
             VALUES (%s, %s, %s)
         """
         try:
-            DatabaseQuery.execute_update(query, (user_id, level, rank_score))
+            DatabaseQuery.execute_update(query, (user_id, level, xp))
             return True
         except Exception as e:
             print(f"Failed to log level change: {e}")
             return False
     
     @staticmethod
-    def update_rank(user_id, points):
+    def update_rank(user_id, rank_points_delta, xp_delta):
         """
-        Update user's rank score and recalculate level from database.
+        Update user's XP and rank points.
         
         Args:
             user_id: User's ID
-            points: Points to add (positive or negative)
+            rank_points_delta: Points to add/subtract from rank (can be negative)
+            xp_delta: XP to add (always positive)
         
         Returns:
             True if successful, False otherwise
@@ -105,37 +106,43 @@ class RankService:
         try:
             cursor = conn.cursor(dictionary=True)
             
-            # 1. Get current score and level
-            cursor.execute("SELECT rank_score, user_level FROM users WHERE id = %s", (user_id,))
+            # 1. Get current values
+            cursor.execute("SELECT xp, level, rank_points FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
                 return False
             
-            current_score = user['rank_score']
-            current_level = user['user_level']
+            current_xp = user['xp']
+            current_level = user['level']
+            current_rank_points = user['rank_points']
             
-            # 2. Calculate new score (minimum 0)
-            new_score = max(0, current_score + points)
+            # 2. Calculate new values
+            new_xp = current_xp + xp_delta
+            new_rank_points = max(0, current_rank_points + rank_points_delta)
             
-            # 3. Update score in database
-            cursor.execute("UPDATE users SET rank_score = %s WHERE id = %s", (new_score, user_id))
+            # 3. Calculate new rank_id
+            from services.user_service import UserService
+            new_rank_id = UserService.calculate_rank_id(new_rank_points)
             
-            # 4. Query game_levels table to get new level
+            # 4. Calculate new level from game_levels table
             cursor.execute(
                 "SELECT level FROM game_levels WHERE required_score <= %s ORDER BY level DESC LIMIT 1", 
-                (new_score,)
+                (new_xp,)
             )
             level_row = cursor.fetchone()
             new_level = level_row['level'] if level_row else 1
             
-            # 5. If level changed -> Update level and log history
+            # 5. Update database
+            cursor.execute(
+                "UPDATE users SET xp = %s, level = %s, rank_points = %s, rank_id = %s WHERE id = %s",
+                (new_xp, new_level, new_rank_points, new_rank_id, user_id)
+            )
+            
+            # 6. If level changed -> Log history
             if new_level != current_level:
-                cursor.execute("UPDATE users SET user_level = %s WHERE id = %s", (new_level, user_id))
-                
-                # Log level-up
                 cursor.execute(
-                    "INSERT INTO user_levels_history (user_id, level, rank_score) VALUES (%s, %s, %s)",
-                    (user_id, new_level, new_score)
+                    "INSERT INTO user_levels_history (user_id, level, xp) VALUES (%s, %s, %s)",
+                    (user_id, new_level, new_xp)
                 )
                 print(f"User {user_id} level changed: {current_level} -> {new_level}")
 
@@ -157,12 +164,12 @@ class RankService:
         Update ranks for multiple users in a transaction.
         
         Args:
-            updates: List of tuples (user_id, points)
+            updates: List of tuples (user_id, rank_points_delta, xp_delta)
         
         Returns:
             True if all updates succeed, False otherwise
         """
-        for user_id, points in updates:
-            if not RankService.update_rank(user_id, points):
+        for user_id, rank_points_delta, xp_delta in updates:
+            if not RankService.update_rank(user_id, rank_points_delta, xp_delta):
                 return False
         return True

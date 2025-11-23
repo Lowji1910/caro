@@ -22,13 +22,19 @@ class LeaderboardService:
             SELECT 
                 u.id, 
                 u.display_name, 
-                u.rank_score, 
-                u.user_level,
+                u.xp,
+                u.level,
+                u.level as user_level, -- Alias for frontend
+                u.rank_points, 
+                u.rank_points as rank_score, -- Alias for frontend
+                r.name as rank_name,
+                r.color as rank_color,
                 t.name as tier_name,
                 t.color as tier_color
             FROM users u
-            LEFT JOIN tiers t ON u.user_level BETWEEN t.min_level AND t.max_level
-            ORDER BY u.rank_score DESC
+            LEFT JOIN ranks r ON u.rank_id = r.id
+            LEFT JOIN tiers t ON u.level BETWEEN t.min_level AND t.max_level
+            ORDER BY u.rank_points DESC
             LIMIT %s
         """
         return DatabaseQuery.execute_query(query, (limit,), fetch_all=True) or []
@@ -47,7 +53,7 @@ class LeaderboardService:
         query = """
             SELECT COUNT(*) + 1 as rank
             FROM users
-            WHERE rank_score > (SELECT rank_score FROM users WHERE id = %s)
+            WHERE rank_points > (SELECT rank_points FROM users WHERE id = %s)
         """
         result = DatabaseQuery.execute_query(query, (user_id,), fetch_one=True)
         return result['rank'] if result else None
@@ -87,11 +93,13 @@ class LeaderboardService:
         offset = max(0, user_rank - range_size - 1)
         query = """
             SELECT 
-                u.id, u.display_name, u.rank_score, u.user_level,
+                u.id, u.display_name, u.rank_points, u.level,
+                u.rank_points as rank_score, -- Alias for frontend
+                u.level as user_level, -- Alias for frontend
                 t.name as tier_name, t.color as tier_color
             FROM users u
-            LEFT JOIN tiers t ON u.user_level BETWEEN t.min_level AND t.max_level
-            ORDER BY u.rank_score DESC
+            LEFT JOIN tiers t ON u.level BETWEEN t.min_level AND t.max_level
+            ORDER BY u.rank_points DESC
             LIMIT %s OFFSET %s
         """
         return DatabaseQuery.execute_query(

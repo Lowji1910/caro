@@ -20,6 +20,7 @@ import RankInfoModal from './components/RankInfoModal';
 import PracticeDifficultySelector from './components/PracticeDifficultySelector';
 import ReplayBoard from './components/ReplayBoard';
 import ChatBox from './components/ChatBox';
+import Login from './components/Login';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const SOCKET_URL = BACKEND_URL;
@@ -182,15 +183,14 @@ export default function App() {
 
   // --- API CALLS ---
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLoginWithCredentials = async (username: string, password: string) => {
     setIsLoading(true);
 
     try {
       const res = await fetch(`${SOCKET_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginForm)
+        body: JSON.stringify({ username, password })
       });
 
       if (!res.ok) throw new Error('Login failed');
@@ -200,7 +200,7 @@ export default function App() {
       localStorage.setItem('user', JSON.stringify(data));
       setView('DASHBOARD');
     } catch (err) {
-      alert('Invalid username or password');
+      alert('Tên đăng nhập hoặc mật khẩu không đúng');
     } finally {
       setIsLoading(false);
     }
@@ -217,7 +217,7 @@ export default function App() {
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Signup failed');
+        throw new Error(error.error || 'Đăng ký thất bại');
       }
 
       const data = await res.json();
@@ -238,9 +238,29 @@ export default function App() {
   };
 
   const handleUpdateProfile = async (updated: Partial<UserProfile>) => {
-    const newUser = { ...user, ...updated } as UserProfile;
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
+    // After profile update, refetch fresh data from database
+    // to ensure all fields (tier info, calculated fields) are accurate
+    if (user?.id) {
+      try {
+        const res = await fetch(`${SOCKET_URL}/api/user/${user.id}`);
+        if (res.ok) {
+          const freshUser = await res.json();
+          setUser(freshUser);
+          localStorage.setItem('user', JSON.stringify(freshUser));
+        } else {
+          // Fallback: merge if fetch fails
+          const newUser = { ...user, ...updated } as UserProfile;
+          setUser(newUser);
+          localStorage.setItem('user', JSON.stringify(newUser));
+        }
+      } catch (err) {
+        console.error('Failed to refetch user profile:', err);
+        // Fallback: merge if fetch fails
+        const newUser = { ...user, ...updated } as UserProfile;
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+      }
+    }
   };
 
   const fetchLeaderboard = async () => {
@@ -313,6 +333,7 @@ export default function App() {
       socketRef.current?.emit('leave_game', { roomId: match.id });
     }
     setMatch(null);
+    setPlayerNumber(null);
     setChatMessages([]);
     setPracticeLoading(false);
     setView('DASHBOARD');
@@ -377,7 +398,7 @@ export default function App() {
       setView('PUBLIC_PROFILE');
     } catch (err) {
       console.error(err);
-      alert('Could not load profile');
+      alert('Không thể tải thông tin người dùng');
     }
   };
 
@@ -390,7 +411,7 @@ export default function App() {
       setView('REPLAY');
     } catch (err) {
       console.error(err);
-      alert('Could not load replay');
+      alert('Không thể tải trận đấu');
     }
   };
 
@@ -409,52 +430,22 @@ export default function App() {
 
   if (view === 'AUTH') {
     return (
-      <div className={`min - h - screen w - full flex items - center justify - center bg - gradient - to - br ${GRADIENTS.bg1} `}>
-        <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-md border border-gray-200">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600 mb-2">
-              Ranked Arena
-            </h1>
-            <p className="text-gray-500 font-medium">MySQL + Flask + Socket.IO</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-4">
-              <div className="relative">
-                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <input
-                  type="text"
-                  placeholder="Username"
-                  value={loginForm.username}
-                  onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-blue-400 focus:bg-white rounded-xl outline-none transition-all font-medium text-gray-700"
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={loginForm.password}
-                  onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-blue-400 focus:bg-white rounded-xl outline-none transition-all font-medium text-gray-700"
-                />
-              </div>
-            </div>
-            <Button type="submit" className="w-full py-4 text-lg shadow-blue-300/50 shadow-lg" loading={isLoading}>
-              Login
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full py-4 text-lg"
-              onClick={() => setView('SIGNUP')}
-            >
-              Create Account
-            </Button>
-          </form>
-        </div>
-      </div>
+      <Login
+        onLogin={(e, form) => {
+          e.preventDefault();
+          setLoginForm(form);
+          // Need to call handleLogin with the event and updated form state
+          // But handleLogin uses state directly. 
+          // Let's modify handleLogin to accept form data or just update state and call it.
+          // Better: Update state then trigger login.
+          // Actually, the Login component passes the form data.
+          // We can just call the API directly here or refactor handleLogin.
+          // Let's refactor handleLogin to take credentials.
+          handleLoginWithCredentials(form.username, form.password);
+        }}
+        onSignupClick={() => setView('SIGNUP')}
+        isLoading={isLoading}
+      />
     );
   }
 
@@ -476,8 +467,8 @@ export default function App() {
             <Sword size={64} className="animate-pulse" />
           </div>
         </div>
-        <h2 className="text-3xl font-bold mb-2">Connecting to Server...</h2>
-        <Button variant="secondary" onClick={returnToDashboard}>Cancel</Button>
+        <h2 className="text-3xl font-bold mb-2">Đang kết nối đến máy chủ...</h2>
+        <Button variant="secondary" onClick={returnToDashboard}>Hủy</Button>
       </div>
     );
   }
@@ -546,7 +537,7 @@ export default function App() {
                 <Button size="sm" variant="ghost" onClick={fetchLeaderboard}>Refresh</Button>
               </div>
               <div className="space-y-3">
-                {leaderboard.length === 0 && <div className="text-center text-gray-400">Loading from MySQL...</div>}
+                {leaderboard.length === 0 && <div className="text-center text-gray-400">Đang tải từ MySQL...</div>}
                 {leaderboard.map((p, i) => {
                   return (
                     <div
@@ -617,7 +608,7 @@ export default function App() {
           <div className="flex flex-col lg:flex-row min-h-[calc(100vh-96px)] gap-4">
             <div className="w-full lg:w-80 flex flex-col gap-4 shrink-0">
               <Button variant="secondary" size="sm" className="self-start" onClick={handleLeaveGameClick}>
-                <ChevronLeft size={16} /> Leave Game
+                <ChevronLeft size={16} /> Rời trận
               </Button>
 
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 flex-1 flex flex-col gap-6">
@@ -626,7 +617,7 @@ export default function App() {
                   <div className="flex items-center justify-center bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border-2 border-blue-200">
                     <Clock size={24} className="text-blue-600 mr-2" />
                     <div className="text-center">
-                      <div className="text-sm font-semibold text-gray-600">Time Left</div>
+                      <div className="text-sm font-semibold text-gray-600">Thời gian</div>
                       <div className={`text - 3xl font - black ${timeLeft <= 10 ? 'text-red-600 animate-pulse' : 'text-blue-600'} `}>
                         {timeLeft}s
                       </div>
@@ -639,7 +630,7 @@ export default function App() {
                   ? (playerNumber === 1 ? 'bg-blue-50 ring-2 ring-blue-200' : 'bg-pink-50 ring-2 ring-pink-200')
                   : 'bg-gray-50'
                   } `}>
-                  <span className="text-sm font-bold text-gray-400">YOU ({playerNumber === 1 ? 'X' : 'O'})</span>
+                  <span className="text-sm font-bold text-gray-400">BẠN ({playerNumber === 1 ? 'X' : 'O'})</span>
                   <div className="font-bold text-xl">{user?.display_name}</div>
                 </div>
 
@@ -652,8 +643,8 @@ export default function App() {
                   ? (playerNumber === 1 ? 'bg-pink-50 ring-2 ring-pink-200' : 'bg-blue-50 ring-2 ring-blue-200')
                   : 'bg-gray-50'
                   } `}>
-                  <span className="text-sm font-bold text-gray-400">OPPONENT ({playerNumber === 1 ? 'O' : 'X'})</span>
-                  <div className="font-bold text-xl">{match.opponent?.display_name || 'Waiting...'}</div>
+                  <span className="text-sm font-bold text-gray-400">ĐỐI THỦ ({playerNumber === 1 ? 'O' : 'X'})</span>
+                  <div className="font-bold text-xl">{match.opponent?.display_name || 'Đang chờ...'}</div>
                 </div>
               </div>
             </div>
@@ -664,9 +655,13 @@ export default function App() {
                   <div className="bg-white p-8 rounded-3xl shadow-2xl text-center">
                     <div className="text-6xl mb-4">{gameState.winner === playerNumber ? '🏆' : (gameState.winner === 'draw' ? '🤝' : '💀')}</div>
                     <h2 className="text-3xl font-black mb-2 text-gray-800">
-                      {gameState.winner === playerNumber ? 'VICTORY!' : (gameState.winner === 'draw' ? 'DRAW' : 'DEFEAT')}
+                      {gameState.winner === playerNumber ? 'CHIẾN THẮNG!' : (gameState.winner === 'draw' ? 'HÒA' : 'THẤT BẠI')}
                     </h2>
-                    <Button onClick={returnToDashboard}>Back to Hub</Button>
+                    {/* Debug Info */}
+                    <div className="text-xs text-gray-400 mb-4">
+                      Winner: {gameState.winner} | You: {playerNumber}
+                    </div>
+                    <Button onClick={returnToDashboard}>Quay lại Dashboard</Button>
                   </div>
                 </div>
               )}

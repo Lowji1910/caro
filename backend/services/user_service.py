@@ -19,7 +19,8 @@ class UserService:
         
         # 2. Nếu user tồn tại, dùng hàm check_password_hash để so sánh mật khẩu nhập vào với mật khẩu mã hóa trong DB
         if user and check_password_hash(user['password'], password):
-            return user
+            # Return full user profile with rank/tier info
+            return UserService.get_user_with_rank_tier(user['id'])
             
         return None
     
@@ -35,6 +36,60 @@ class UserService:
             User dict or None
         """
         query = "SELECT * FROM users WHERE id = %s"
+        return DatabaseQuery.execute_query(query, (user_id,), fetch_one=True)
+    
+    @staticmethod
+    def calculate_rank_id(rank_points):
+        """
+        Calculate rank ID from rank_points for FK to ranks table.
+        
+        Rank IDs:
+        - 1: Bronze (0-499 pts)
+        - 2: Silver (500-999 pts)
+        - 3: Gold (1000-1999 pts)
+        - 4: Crystal (2000+ pts)
+        
+        Args:
+            rank_points: User's current rank points
+        
+        Returns:
+            Rank ID (1-4)
+        """
+        if rank_points >= 2000:
+            return 4  # Crystal
+        elif rank_points >= 1000:
+            return 3  # Gold
+        elif rank_points >= 500:
+            return 2  # Silver
+        else:
+            return 1  # Bronze
+    
+    @staticmethod
+    def get_user_with_rank_tier(user_id):
+        """
+        Get user with rank and tier information via JOINs.
+        
+        Args:
+            user_id: User's ID
+        
+        Returns:
+            User dict with rank_name, rank_color, tier_name, tier_color
+        """
+        query = """
+            SELECT 
+                u.*,
+                u.rank_points as rank_score, -- Alias for frontend
+                u.level as user_level, -- Alias for frontend
+                r.name as rank_name,
+                r.name as rank_level,  -- Alias for frontend compatibility
+                r.color as rank_color,
+                t.name as tier_name,
+                t.color as tier_color
+            FROM users u
+            LEFT JOIN ranks r ON u.rank_id = r.id
+            LEFT JOIN tiers t ON u.level BETWEEN t.min_level AND t.max_level
+            WHERE u.id = %s
+        """
         return DatabaseQuery.execute_query(query, (user_id,), fetch_one=True)
     
     @staticmethod
@@ -63,36 +118,22 @@ class UserService:
         # Check if email exists
         email_check_query = "SELECT id FROM users WHERE email = %s"
         if DatabaseQuery.execute_query(email_check_query, (email,), fetch_one=True):
-            return None # Email đã tồn tại
+            return None  # Email đã tồn tại
         
         # 1. Mã hóa mật khẩu
         hashed_password = generate_password_hash(password)
 
-        # 2. Insert user với mật khẩu đã mã hóa và email
+        # 2. Insert user with rank_id=1 (Bronze), xp=0, level=1
         query = """
-            INSERT INTO users (username, password, display_name, full_name, email, rank_score, rank_level, user_level)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (username, password, display_name, full_name, email, xp, level, rank_points, rank_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        # Truyền hashed_password và email vào query
-        user_id = DatabaseQuery.execute_update(query, (
-            username, 
-            hashed_password, 
-            display_name, 
-            display_name, 
-            email,
-            0, 'Bronze', 1
-        ))
+        params = (username, hashed_password, display_name, display_name, email, 0, 1, 0, 1)
+        user_id = DatabaseQuery.execute_update(query, params)
         
         if user_id:
-            return {
-                'id': user_id,
-                'username': username,
-                'display_name': display_name,
-                'email': email,
-                'rank_score': 0,
-                'rank_level': 'Bronze',
-                'user_level': 1
-            }
+            return UserService.get_user_with_rank_tier(user_id)
+        return None
         return None
     
     @staticmethod
@@ -108,7 +149,7 @@ class UserService:
             Updated user dict or None
         """
         if not kwargs:
-            return UserService.get_user_by_id(user_id)
+            return UserService.get_user_with_rank_tier(user_id)
         
         # Build dynamic UPDATE query
         update_fields = []
@@ -121,13 +162,13 @@ class UserService:
                 update_values.append(kwargs[field])
         
         if not update_fields:
-            return UserService.get_user_by_id(user_id)
+            return UserService.get_user_with_rank_tier(user_id)
         
         update_values.append(user_id)
         query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
         DatabaseQuery.execute_update(query, tuple(update_values))
         
-        return UserService.get_user_by_id(user_id)
+        return UserService.get_user_with_rank_tier(user_id)
     
     @staticmethod
     def change_password(user_id, old_password, new_password):
@@ -163,12 +204,15 @@ class UserService:
         query = """
             SELECT 
                 u.id, u.display_name, u.full_name, u.bio, u.avatar_url, 
-                u.rank_score, u.user_level, u.created_at,
+                u.xp, u.level, u.rank_points, 
+                u.rank_points as rank_score, -- Alias for frontend compatibility
+                u.level as user_level, -- Alias for frontend compatibility
+                u.created_at,
                 t.name as tier_name,
                 t.color as tier_color,
                 t.description as tier_description
             FROM users u
-            LEFT JOIN tiers t ON u.user_level BETWEEN t.min_level AND t.max_level
+            LEFT JOIN tiers t ON u.level BETWEEN t.min_level AND t.max_level
             WHERE u.id = %s
         """
         return DatabaseQuery.execute_query(query, (user_id,), fetch_one=True)

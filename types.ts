@@ -6,10 +6,10 @@ export type GameMode = 'ranked' | 'practice' | 'local';
 export type AIDifficulty = 'easy' | 'medium' | 'hard';
 
 export interface ChatMessage {
-    sender: string;
-    senderId: number;
-    message: string;
-    timestamp: number;
+  sender: string;
+  senderId: number;
+  message: string;
+  timestamp: number;
 }
 
 export type ViewState = 'AUTH' | 'SIGNUP' | 'DASHBOARD' | 'MATCHMAKING' | 'GAME' | 'PROFILE' | 'PRACTICE_DIFFICULTY' | 'REPLAY' | 'PUBLIC_PROFILE';
@@ -23,8 +23,13 @@ export interface UserProfile {
   bio?: string;
   avatar_url?: string;
   rank_level: 'Bronze' | 'Silver' | 'Gold' | 'Crystal';
-  rank_score: number;
-  user_level?: number; // Level từ 1-500
+  rank_score: number; // Deprecated, use rank_points
+  user_level?: number; // Deprecated, use level
+
+  // New System
+  xp: number;
+  level: number;
+  rank_points: number;
 }
 
 export interface MatchHistory {

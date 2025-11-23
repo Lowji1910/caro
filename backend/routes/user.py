@@ -11,12 +11,12 @@ user_bp = Blueprint('user', __name__, url_prefix='/api')
 @user_bp.route('/user/<int:user_id>', methods=['GET'])
 def get_user(user_id):
     """
-    Get user profile by ID.
+    Get user profile by ID with rank and tier information.
     
     Returns:
-        User dict or 404 error
+        User dict with rank_name, rank_color, tier_name, tier_color
     """
-    user = UserService.get_user_by_id(user_id)
+    user = UserService.get_user_with_rank_tier(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
     

@@ -3,6 +3,7 @@ import { UserProfile, MatchHistory } from '../types';
 import { ArrowLeft, Edit2, Lock, Eye } from 'lucide-react';
 import { COLORS } from '../constants';
 import { getTierInfo } from '../utils/tierUtils';
+import { getLevelProgress, getRankProgress } from '../utils/levelUtils';
 import Button from './Button';
 
 interface ProfileProps {
@@ -46,7 +47,33 @@ export const Profile: React.FC<ProfileProps> = ({
 
   useEffect(() => {
     fetchMatchHistory();
+    // Refetch user data from database to ensure fresh data
+    refetchUserProfile();
   }, []);
+
+  // Sync formData when user prop changes (e.g., after database update)
+  useEffect(() => {
+    setFormData({
+      full_name: user.full_name || '',
+      display_name: user.display_name || '',
+      date_of_birth: user.date_of_birth || '',
+      bio: user.bio || '',
+      avatar_url: user.avatar_url || ''
+    });
+  }, [user]);
+
+  const refetchUserProfile = async () => {
+    try {
+      const res = await fetch(`${socketURL}/api/user/${user.id}`);
+      if (res.ok) {
+        const freshUser = await res.json();
+        // Update parent component's user state
+        await onUpdate(freshUser);
+      }
+    } catch (err) {
+      console.error('Failed to refetch user profile:', err);
+    }
+  };
 
   const fetchMatchHistory = async () => {
     try {
@@ -73,7 +100,7 @@ export const Profile: React.FC<ProfileProps> = ({
       await onUpdate(updated);
       setIsEditing(false);
     } catch (err) {
-      alert('Failed to update profile');
+      alert('Cập nhật hồ sơ thất bại');
     } finally {
       setIsLoading(false);
     }
@@ -81,12 +108,12 @@ export const Profile: React.FC<ProfileProps> = ({
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('Passwords do not match');
+      alert('Mật khẩu không khớp');
       return;
     }
 
     if (passwordForm.newPassword.length < 6) {
-      alert('Password must be at least 6 characters');
+      alert('Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 
@@ -103,11 +130,11 @@ export const Profile: React.FC<ProfileProps> = ({
 
       if (!res.ok) throw new Error('Change password failed');
 
-      alert('Password changed successfully');
+      alert('Đổi mật khẩu thành công');
       setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswordModal(false);
     } catch (err) {
-      alert('Failed to change password');
+      alert('Đổi mật khẩu thất bại');
     } finally {
       setIsLoading(false);
     }
@@ -129,11 +156,11 @@ export const Profile: React.FC<ProfileProps> = ({
       <div className="bg-white shadow-lg">
         <div className="container mx-auto px-4 py-6 flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold">
-            <ArrowLeft size={20} /> Back
+            <ArrowLeft size={20} /> Quay lại
           </button>
-          <h1 className="text-2xl font-black text-gray-800">My Profile</h1>
+          <h1 className="text-2xl font-black text-gray-800">Hồ sơ của tôi</h1>
           <Button variant="ghost" size="sm" onClick={onLogout} className="text-red-600">
-            Logout
+            Đăng xuất
           </Button>
         </div>
       </div>
@@ -155,17 +182,17 @@ export const Profile: React.FC<ProfileProps> = ({
                   }}
                 />
               ) : (
-                <div className={`w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br ${getRankColor(user.rank_level)} flex items-center justify-center text-4xl font-black text-white shadow-lg`}>
+                <div className={`w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br ${getRankColor(getRankProgress(user.rank_points || 0).rank)} flex items-center justify-center text-4xl font-black text-white shadow-lg`}>
                   {user.display_name?.[0]?.toUpperCase() || 'U'}
                 </div>
               )}
 
               <h2 className="text-2xl font-black text-gray-800 mb-1">{user.display_name}</h2>
-              <p className="text-gray-500 text-sm mb-4">{user.full_name || 'No name set'}</p>
+              <p className="text-gray-500 text-sm mb-4">{user.full_name || 'Chưa đặt tên'}</p>
 
               {/* Rank Badge */}
-              <div className={`bg-gradient-to-r ${getRankColor(user.rank_level)} text-white rounded-full px-6 py-2 font-bold text-center mb-4`}>
-                {user.rank_level}
+              <div className={`bg-gradient-to-r ${getRankColor(getRankProgress(user.rank_points || 0).rank)} text-white rounded-full px-6 py-2 font-bold text-center mb-4`}>
+                {getRankProgress(user.rank_points || 0).rank}
               </div>
 
               {/* Level Badge */}
@@ -183,10 +210,55 @@ export const Profile: React.FC<ProfileProps> = ({
                 })()
               )}
 
-              {/* Rank Score */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="text-gray-600 text-sm font-semibold">Rank Points</div>
-                <div className="text-3xl font-black text-blue-600">{user.rank_score}</div>
+              {/* Progress Bars */}
+              <div className="space-y-4 mb-6">
+                {/* XP Progress */}
+                {(() => {
+                  const xpProgress = getLevelProgress(user.xp || 0, user.level || 1);
+                  return (
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                        <span>Level {user.level || 1}</span>
+                        <span className="text-gray-500">{xpProgress.current} / {xpProgress.max} XP</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-green-500 h-2.5 rounded-full transition-all duration-500"
+                          style={{ width: `${xpProgress.percent}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1 text-right">Tổng XP: {user.xp || 0}</div>
+                    </div>
+                  );
+                })()}
+
+                {/* Rank Progress */}
+                {(() => {
+                  const rankProgress = getRankProgress(user.rank_points || 0);
+                  return (
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                        <span className={rankProgress.rank === 'Crystal' ? 'text-cyan-500' :
+                          rankProgress.rank === 'Gold' ? 'text-yellow-500' :
+                            rankProgress.rank === 'Silver' ? 'text-gray-500' : 'text-amber-600'}>
+                          {rankProgress.rank}
+                        </span>
+                        <span className="text-gray-500">{user.rank_points || 0} điểm</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-500 bg-gradient-to-r ${getRankColor(rankProgress.rank)}`}
+                          style={{ width: `${rankProgress.percent}%` }}
+                        ></div>
+                      </div>
+                      {rankProgress.rank !== 'Crystal' && (
+                        <div className="text-xs text-gray-400 mt-1 text-right">
+                          {rankProgress.max - rankProgress.current} điểm nữa để lên {rankProgress.nextRank}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {!isEditing && (
@@ -194,7 +266,7 @@ export const Profile: React.FC<ProfileProps> = ({
                   onClick={() => setIsEditing(true)}
                   className="w-full mb-3"
                 >
-                  <Edit2 size={16} className="mr-2" /> Edit Info
+                  <Edit2 size={16} className="mr-2" /> Chỉnh sửa thông tin
                 </Button>
               )}
 
@@ -203,7 +275,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 onClick={() => setShowPasswordModal(true)}
                 className="w-full mb-3"
               >
-                <Lock size={16} className="mr-2" /> Change Password
+                <Lock size={16} className="mr-2" /> Đổi mật khẩu
               </Button>
             </div>
           </div>
@@ -239,33 +311,33 @@ export const Profile: React.FC<ProfileProps> = ({
             {/* Edit Profile Section */}
             {isEditing && (
               <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8">
-                <h3 className="text-2xl font-black mb-6 text-gray-800">Edit Personal Information</h3>
+                <h3 className="text-2xl font-black mb-6 text-gray-800">Chỉnh sửa thông tin cá nhân</h3>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Tên đầy đủ</label>
                     <input
                       type="text"
                       value={formData.full_name || ''}
                       onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                      placeholder="Enter full name"
+                      placeholder="Nhập tên đầy đủ"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Display Name</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Tên hiển thị</label>
                     <input
                       type="text"
                       value={formData.display_name || ''}
                       onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                      placeholder="Enter display name"
+                      placeholder="Nhập tên hiển thị"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
                     <input
                       type="date"
                       value={formData.date_of_birth || ''}
@@ -275,19 +347,19 @@ export const Profile: React.FC<ProfileProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Bio / About Me</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Giới thiệu bản thân</label>
                     <textarea
                       value={formData.bio || ''}
                       onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none h-24 resize-none"
-                      placeholder="Tell us about yourself..."
+                      placeholder="Giới thiệu đôi chút về bạn..."
                       maxLength={200}
                     />
                     <p className="text-xs text-gray-400 mt-1">{(formData.bio || '').length}/200</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Avatar URL</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Đường dẫn Avatar</label>
                     <input
                       type="url"
                       value={formData.avatar_url || ''}
@@ -295,7 +367,7 @@ export const Profile: React.FC<ProfileProps> = ({
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                       placeholder="https://example.com/avatar.jpg"
                     />
-                    <p className="text-xs text-gray-400 mt-1">Paste a direct image URL</p>
+                    <p className="text-xs text-gray-400 mt-1">Dán đường dẫn ảnh trực tiếp</p>
                   </div>
 
                   <div className="flex gap-3 pt-4">
@@ -304,7 +376,7 @@ export const Profile: React.FC<ProfileProps> = ({
                       loading={isLoading}
                       className="flex-1"
                     >
-                      Save Changes
+                      Lưu thay đổi
                     </Button>
                     <Button
                       variant="secondary"
@@ -320,7 +392,7 @@ export const Profile: React.FC<ProfileProps> = ({
                       }}
                       className="flex-1"
                     >
-                      Cancel
+                      Hủy
                     </Button>
                   </div>
                 </div>
@@ -329,11 +401,11 @@ export const Profile: React.FC<ProfileProps> = ({
 
             {/* Match History */}
             <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8">
-              <h3 className="text-2xl font-black mb-6 text-gray-800">Match History</h3>
+              <h3 className="text-2xl font-black mb-6 text-gray-800">Lịch sử đấu</h3>
 
               {matchHistory.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
-                  No matches played yet. Start playing to build your history!
+                  Chưa có trận đấu nào. Hãy bắt đầu chơi để ghi lại lịch sử!
                 </div>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -353,7 +425,7 @@ export const Profile: React.FC<ProfileProps> = ({
                         match.result === 'loss' ? 'bg-red-100 text-red-700' :
                           'bg-yellow-100 text-yellow-700'
                         }`}>
-                        {match.result === 'win' ? '✓ Win' : match.result === 'loss' ? '✗ Loss' : '= Draw'}
+                        {match.result === 'win' ? '✓ Thắng' : match.result === 'loss' ? '✗ Thua' : '= Hòa'}
                       </div>
 
                       {onReplayMatch && (
@@ -375,69 +447,71 @@ export const Profile: React.FC<ProfileProps> = ({
       </main>
 
       {/* Change Password Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 max-w-md w-full">
-            <h2 className="text-2xl font-black mb-6 text-gray-800">Change Password</h2>
+      {
+        showPasswordModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 max-w-md w-full">
+              <h2 className="text-2xl font-black mb-6 text-gray-800">Đổi mật khẩu</h2>
 
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
-                <input
-                  type="password"
-                  value={passwordForm.oldPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                  placeholder="Enter current password"
-                />
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    value={passwordForm.oldPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                    placeholder="Nhập mật khẩu hiện tại"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                    placeholder="Nhập mật khẩu mới"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Xác nhận mật khẩu</label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                    placeholder="Xác nhận mật khẩu mới"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
-                <input
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                  placeholder="Enter new password"
-                />
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleChangePassword}
+                  loading={isLoading}
+                  className="flex-1"
+                >
+                  Đổi mật khẩu
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                  }}
+                  className="flex-1"
+                >
+                  Hủy
+                </Button>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
-                <input
-                  type="password"
-                  value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                  placeholder="Confirm new password"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={handleChangePassword}
-                loading={isLoading}
-                className="flex-1"
-              >
-                Change Password
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

@@ -26,11 +26,11 @@ export const RankInfoModal: React.FC<RankInfoModalProps> = ({ gameType, isOpen, 
         { level: 'Crystal', range: '2000+ pts', color: 'from-cyan-400 to-blue-300', description: 'Mức cao nhất - Người chơi chuyên nghiệp' }
       ],
       mechanics: [
-        'Mỗi lần thắng được +25 điểm xếp hạng',
-        'Mỗi lần thua mất -10 điểm xếp hạng',
-        'Trận hòa không ảnh hưởng đến xếp hạng',
+        'Thắng: +50 XP (Level) & +25 Rank Points',
+        'Thua: +15 XP (Level) & -10 Rank Points',
+        'Hòa: +25 XP (Level) & 0 Rank Points',
         'Leo rank để mở khóa các badge độc quyền',
-        'Theo dõi tiến độ trên bảng xếp hạng toàn cầu'
+        'Level càng cao càng nhận được danh hiệu ngầu'
       ]
     },
     'caro': {
@@ -45,10 +45,10 @@ export const RankInfoModal: React.FC<RankInfoModalProps> = ({ gameType, isOpen, 
         { level: 'Crystal', range: '2000+ pts', color: 'from-cyan-400 to-blue-300', description: 'Mức cao nhất - Huyền thoại Caro' }
       ],
       mechanics: [
-        'Thắng bằng cách xếp 5 quân liên tiếp (ngang, dọc hoặc chéo)',
-        'Mỗi lần thắng được +25 điểm xếp hạng',
-        'Mỗi lần thua mất -10 điểm xếp hạng',
-        'Trận hòa không ảnh hưởng đến xếp hạng',
+        'Thắng bằng cách xếp 5 quân liên tiếp',
+        'Thắng: +50 XP (Level) & +25 Rank Points',
+        'Thua: +15 XP (Level) & -10 Rank Points',
+        'Hòa: +25 XP (Level) & 0 Rank Points',
         'Cạnh tranh trên bảng xếp hạng toàn cầu'
       ]
     }

@@ -306,12 +306,21 @@ def _handle_end_game(game, winner):
         winner: 1, 2, 'draw', or 0
     """
     if game['mode'] == 'ranked' and winner != 0:
-        # Update ranks
-        if winner != 'draw':
+        # Update ranks and XP
+        # Win: +50 XP, +25 Rank Points
+        # Loss: +15 XP, -10 Rank Points
+        # Draw: +25 XP, 0 Rank Points
+        
+        if winner == 'draw':
+            p1_uid = game['players'][1]
+            p2_uid = game['players'][2]
+            RankService.update_rank(p1_uid, 0, 25)
+            RankService.update_rank(p2_uid, 0, 25)
+        else:
             winner_uid = game['players'][winner]
             loser_uid = game['players'][3 - winner]
-            RankService.update_rank(winner_uid, 25)
-            RankService.update_rank(loser_uid, -10)
+            RankService.update_rank(winner_uid, 25, 50)
+            RankService.update_rank(loser_uid, -10, 15)
         
         # Save match history
         winner_uid = None

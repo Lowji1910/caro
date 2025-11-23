@@ -58,99 +58,141 @@ const PracticeDifficultySelector: React.FC<PracticeDifficultySelectorProps> = ({
   const gameLabel = gameType === 'tic-tac-toe' ? 'Tic-Tac-Toe' : 'Caro';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-slate-50 text-slate-900">
-      <div className="max-w-6xl mx-auto px-4 py-12 space-y-10">
-        <div className="bg-white shadow-2xl shadow-slate-200 rounded-3xl border border-slate-100 p-8 flex flex-col gap-6">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-100/50 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-100/50 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-12 md:py-20 space-y-12">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-4">
             <button
               onClick={onBack}
-              className="rounded-full border border-slate-200 bg-white p-2 text-slate-600 hover:text-slate-900 transition-shadow shadow-sm"
+              className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium"
             >
-              <ArrowLeft size={20} />
+              <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-sm group-hover:shadow-md transition-all">
+                <ArrowLeft size={20} />
+              </div>
+              <span>Back to Dashboard</span>
             </button>
+
             <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Luyện tập</p>
-              <h1 className="text-4xl md:text-5xl font-black leading-tight text-slate-900">
-                {gameLabel} <span className="text-sky-600">• Chọn độ khó</span>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider">
+                  Practice Mode
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-slate-500 font-medium">{gameLabel}</span>
+              </div>
+              <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight">
+                Choose Your <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                  Challenge Level
+                </span>
               </h1>
-              <p className="text-slate-500 mt-1">Tinh chỉnh phản xạ và chiến thuật trước khi bước vào trận đấu xếp hạng.</p>
             </div>
           </div>
-          {isProcessing && (
-            <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-600">
-              <Activity size={20} className="mt-1 animate-spin" />
-              <div>
-                <p className="font-semibold text-slate-800">Đang thiết lập trận luyện tập...</p>
-                <p className="text-sm text-slate-500">Bạn sẽ được chuyển vào bàn đấu ngay khi AI sẵn sàng.</p>
-              </div>
-            </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-slate-400">
-                <Shield size={18} />
-                <p className="text-xs uppercase tracking-[0.3em]">Tốc độ phản ứng</p>
-              </div>
-              <p className="text-xl font-bold text-slate-900">Tuỳ chỉnh linh hoạt</p>
-              <p className="text-sm text-slate-500">Từ dễ đến khó, AI phản hồi nhanh hơn từng bước một.</p>
-            </div>
-            <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-slate-400">
-                <Zap size={18} />
-                <p className="text-xs uppercase tracking-[0.3em]">Khả năng học</p>
-              </div>
-              <p className="text-xl font-bold text-slate-900">Thuật toán tinh chỉnh</p>
-              <p className="text-sm text-slate-500">Theo dõi mẫu chiến thuật và đánh giá tình huống thực.</p>
-            </div>
-            <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-slate-400">
-                <Activity size={18} />
-                <p className="text-xs uppercase tracking-[0.3em]">Từ vựng chiến thuật</p>
-              </div>
-              <p className="text-xl font-bold text-slate-900">Tăng tiến trải nghiệm</p>
-              <p className="text-sm text-slate-500">Mỗi độ khó là nấc thang để bạn nâng cao kỹ năng.</p>
-            </div>
+
+          <div className="max-w-md text-slate-600 text-lg leading-relaxed">
+            Select an AI difficulty to hone your skills. Each level is designed to simulate different playstyles and strategic depths.
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {difficultyOptions.map(diff => (
+        {isProcessing && (
+          <div className="w-full bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-center justify-center gap-4 animate-pulse">
+            <Activity className="text-blue-600 animate-spin" />
+            <span className="text-blue-800 font-semibold">Initializing Practice Match...</span>
+          </div>
+        )}
+
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {difficultyOptions.map((diff) => (
             <div
               key={diff.value}
-              className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200"
+              className="group relative bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 overflow-hidden flex flex-col"
             >
-              <div className="relative flex items-center justify-between">
-                <div>
-                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-[0.2em] uppercase text-white ${diff.gradient}`}>{diff.subLabel}</span>
-                  <h2 className="mt-5 text-3xl font-black flex items-center gap-2 text-slate-900">
-                    {diff.label}
-                    <span className="text-slate-400 text-sm font-medium">({gameLabel})</span>
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-3 leading-relaxed">{diff.description}</p>
-                </div>
-                <div className={`rounded-2xl border ${diff.accent} border-current px-3 py-2 text-xs font-semibold uppercase`}>AI {diff.label}</div>
-              </div>
+              {/* Card Header Gradient */}
+              <div className={`h-2 bg-gradient-to-r ${diff.gradient}`} />
 
-              <p className="mt-4 text-slate-500 text-sm italic">{diff.highlight}</p>
-
-              <div className="mt-5 space-y-2">
-                {diff.insights.map(insight => (
-                  <div key={insight} className="flex items-center gap-3 text-sm text-slate-600">
-                    <span className="text-slate-400"><Activity size={16} /></span>
-                    <span>{insight}</span>
+              <div className="p-8 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-6">
+                  <div className={`w-14 h-14 rounded-2xl ${diff.accent} flex items-center justify-center text-2xl shadow-inner`}>
+                    {diff.value === 'easy' && '🌱'}
+                    {diff.value === 'medium' && '⚔️'}
+                    {diff.value === 'hard' && '🔥'}
                   </div>
-                ))}
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${diff.accent}`}>
+                    {diff.subLabel}
+                  </span>
+                </div>
+
+                <h3 className="text-3xl font-black text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">
+                  {diff.label}
+                </h3>
+
+                <p className="text-slate-500 leading-relaxed mb-8">
+                  {diff.description}
+                </p>
+
+                <div className="space-y-4 mb-8 flex-1">
+                  {diff.insights.map((insight, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className={`mt-1 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${diff.accent}`}>
+                        <Zap size={10} />
+                      </div>
+                      <span className="text-sm text-slate-600 font-medium">{insight}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  className={`w-full py-4 text-lg font-bold rounded-2xl shadow-lg transition-transform active:scale-[0.98] bg-gradient-to-r ${diff.gradient} text-white border-none hover:brightness-110`}
+                  onClick={() => onSelect(diff.value)}
+                  disabled={isProcessing}
+                >
+                  Start {diff.label} Match
+                </Button>
               </div>
 
-              <Button
-                className={`mt-6 w-full bg-gradient-to-r ${diff.gradient} text-white`}
-                onClick={() => onSelect(diff.value)}
-                disabled={isProcessing}
-              >
-                Bắt đầu {diff.label}
-              </Button>
+              {/* Hover Effect Overlay */}
+              <div className={`absolute inset-0 bg-gradient-to-r ${diff.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500 pointer-events-none`} />
             </div>
           ))}
+        </div>
+
+        {/* Footer Info */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-slate-200">
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+            <div className="p-3 rounded-xl bg-green-100 text-green-600">
+              <Shield size={24} />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900">Safe Environment</h4>
+              <p className="text-sm text-slate-500">No rank points lost</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+            <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+              <Activity size={24} />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900">Real-time Analysis</h4>
+              <p className="text-sm text-slate-500">Instant move feedback</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+            <div className="p-3 rounded-xl bg-purple-100 text-purple-600">
+              <Zap size={24} />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900">Adaptive AI</h4>
+              <p className="text-sm text-slate-500">Learns from your style</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
