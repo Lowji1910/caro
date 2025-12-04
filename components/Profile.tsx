@@ -158,10 +158,15 @@ export const Profile: React.FC<ProfileProps> = ({
           <button onClick={onBack} className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold">
             <ArrowLeft size={20} /> Quay lại
           </button>
-          <h1 className="text-2xl font-black text-gray-800">Hồ sơ của tôi</h1>
-          <Button variant="ghost" size="sm" onClick={onLogout} className="text-red-600">
-            Đăng xuất
-          </Button>
+          <h1 className="text-2xl font-black text-gray-800">
+            {isPublicView ? `Hồ sơ của ${user.display_name}` : 'Hồ sơ của tôi'}
+          </h1>
+          {!isPublicView && (
+            <Button variant="ghost" size="sm" onClick={onLogout} className="text-red-600">
+              Đăng xuất
+            </Button>
+          )}
+          {isPublicView && <div className="w-24"></div>}
         </div>
       </div>
 
@@ -261,7 +266,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 })()}
               </div>
 
-              {!isEditing && (
+              {!isPublicView && !isEditing && (
                 <Button
                   onClick={() => setIsEditing(true)}
                   className="w-full mb-3"
@@ -270,13 +275,16 @@ export const Profile: React.FC<ProfileProps> = ({
                 </Button>
               )}
 
-              <Button
-                variant="secondary"
-                onClick={() => setShowPasswordModal(true)}
-                className="w-full mb-3"
-              >
-                <Lock size={16} className="mr-2" /> Đổi mật khẩu
-              </Button>
+
+              {!isPublicView && (
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowPasswordModal(true)}
+                  className="w-full mb-3"
+                >
+                  <Lock size={16} className="mr-2" /> Đổi mật khẩu
+                </Button>
+              )}
             </div>
           </div>
 
