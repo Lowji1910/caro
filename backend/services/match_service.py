@@ -8,7 +8,8 @@ class MatchService:
     """Handles match history and game result recording."""
     
     @staticmethod
-    def save_match(player1_id, player2_id, winner_id, game_type, mode, moves=None):
+    def save_match(player1_id, player2_id, winner_id, game_type, mode, result, moves=None):
+        """
         """
         Save a completed match to history.
         
@@ -25,11 +26,11 @@ class MatchService:
         """
         import json
         moves_json = json.dumps(moves) if moves else None
-        query = """
-            INSERT INTO match_history (player1_id, player2_id, winner_id, game_type, mode, moves)
-            VALUES (%s, %s, %s, %s, %s, %s)
+      query = """
+            INSERT INTO match_history (player1_id, player2_id, winner_id, game_type, mode, result, moves)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        return DatabaseQuery.execute_update(query, (player1_id, player2_id, winner_id, game_type, mode, moves_json))
+       return DatabaseQuery.execute_update(query, (player1_id, player2_id, winner_id, game_type, mode, result, moves_json))
     
     @staticmethod
     def get_user_match_history(user_id, limit=20):
