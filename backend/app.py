@@ -35,7 +35,10 @@ def create_app():
     
     return app, socketio
 
+# --- ĐOẠN SỬA ĐỔI ---
+# 1. Đưa dòng này RA NGOÀI khối if main
+app, socketio = create_app()
 
 if __name__ == '__main__':
-    app, socketio = create_app()
+    # 2. Bên trong này chỉ để chạy local thôi
     socketio.run(app, debug=config.DEBUG, host=config.HOST, port=config.PORT)
