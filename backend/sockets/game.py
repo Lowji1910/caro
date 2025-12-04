@@ -22,12 +22,6 @@ def register_game_handlers(socketio):
     def handle_move(data):
         """
         Handle player move.
-        
-        Data:
-            - roomId: str
-            - r: int (row)
-            - c: int (column)
-            - player: int (1 or 2)
         """
         room_id = data.get('roomId')
         r, c = data.get('r'), data.get('c')
@@ -82,12 +76,6 @@ def register_game_handlers(socketio):
     def handle_chat(data):
         """
         Handle chat message.
-        
-        Data:
-            - roomId: str
-            - message: str
-            - sender: str
-            - senderId: int
         """
         room_id = data.get('roomId')
         message = data.get('message', '').strip()
@@ -112,9 +100,6 @@ def register_game_handlers(socketio):
     def handle_undo_request(data):
         """
         Handle undo request from a player.
-        
-        Data:
-            - roomId: str
         """
         room_id = data.get('roomId')
         games = get_games()
@@ -124,21 +109,12 @@ def register_game_handlers(socketio):
             return
             
         # Notify the other player (opponent)
-        # In a 2-player room, broadcasting to the room works, but the client needs to know WHO requested.
-        # But for simplicity as per spec: "Server báo cho B" -> emit 'undo_requested' to room.
-        # The client logic "window.confirm" will show on both if we just emit to room?
-        # No, usually we emit to the opponent. But here let's emit to room but exclude sender?
-        # Flask-SocketIO 'include_self=False' or 'skip_sid=request.sid'
         emit('undo_requested', room=room_id, include_self=False)
 
     @socketio.on('resolve_undo')
     def handle_undo_resolve(data):
         """
         Handle opponent's decision on undo request.
-        
-        Data:
-            - roomId: str
-            - accept: boolean
         """
         room_id = data.get('roomId')
         accept = data.get('accept')
@@ -184,9 +160,6 @@ def register_game_handlers(socketio):
     def handle_timeout(data):
         """
         Handle timeout claim.
-        
-        Data:
-            - roomId: str
         """
         room_id = data.get('roomId')
         games = get_games()
@@ -195,13 +168,8 @@ def register_game_handlers(socketio):
         if not game:
             return
             
-        # Determine winner (the one who claimed it, assuming they claimed because opponent ran out of time)
-        # Actually, we should check whose turn it is.
-        # If it is Player X's turn, and time runs out, Player O wins.
-        # So if Player O claims timeout, and it IS Player X's turn, then O wins.
-        
+        # Determine winner
         current_turn = game['turn']
-        # The winner is the OTHER player
         winner = 2 if current_turn == 1 else 1
         
         # Broadcast game end
@@ -219,9 +187,6 @@ def register_game_handlers(socketio):
     def handle_leave_game(data):
         """
         Handle player leaving the game explicitly.
-        
-        Data:
-            - roomId: str
         """
         room_id = data.get('roomId')
         print(f'[LEAVE_GAME] Player {request.sid} leaving room {room_id}')
@@ -232,7 +197,6 @@ def register_game_handlers(socketio):
         """Handle client disconnection."""
         print(f'Client disconnected: {request.sid}')
         
-        # To properly handle disconnect, we need to know which room the user was in.
         if request.sid in SID_TO_ROOM:
             room_id = SID_TO_ROOM[request.sid]
             print(f'[DISCONNECT] Player {request.sid} was in room {room_id}')
@@ -250,18 +214,13 @@ def _handle_player_leave(room_id, sid):
         print(f'[_handle_player_leave] Game not found for room {room_id}')
         return
     
-    # Initialize winner to 0 if not present
     if 'winner' not in game:
         game['winner'] = 0
         
-    # If game is already over, do nothing
     if game.get('winner', 0) != 0:
         print(f'[_handle_player_leave] Game already over, winner={game.get("winner")}')
         return
 
-    print(f'[_handle_player_leave] Game sids: {game.get("sids")}')
-    
-    # Identify which player left
     leaver_player = None
     if 'sids' in game:
         for p_num, p_sid in game['sids'].items():
@@ -269,21 +228,13 @@ def _handle_player_leave(room_id, sid):
                 leaver_player = p_num
                 break
     
-    print(f'[_handle_player_leave] Leaver player: {leaver_player}')
-    
     if leaver_player is None:
         print(f'[_handle_player_leave] Could not identify leaver')
         return
 
-    # Determine winner (the other player)
     winner = 2 if leaver_player == 1 else 1
-    
-    print(f'[_handle_player_leave] Winner determined: player {winner}')
-    
-    # Update game state
     game['winner'] = winner
     
-    # Broadcast game end
     emit('game_update', {
         'board': game['board'],
         'currentPlayer': 0, # Game over
@@ -292,22 +243,15 @@ def _handle_player_leave(room_id, sid):
         'lastMove': None
     }, room=room_id)
     
-    print(f'[_handle_player_leave] Emitted game_update to room {room_id}')
-    
     _handle_end_game(game, winner)
 
 
 def _handle_end_game(game, winner):
     """
     Handle game end: update ranks and save match history.
-    
-    Args:
-        game: Game state dict
-        winner: 1, 2, 'draw', or 0
     """
     if game['mode'] == 'ranked' and winner != 0:
-        # Biến lưu kết quả trận đấu để gửi vào DB
-        match_result = 'draw'
+        match_result = 'draw' # Mặc định
 
         # Update ranks and XP
         if winner == 'draw':
@@ -315,13 +259,13 @@ def _handle_end_game(game, winner):
             p2_uid = game['players'][2]
             RankService.update_rank(p1_uid, 0, 25)
             RankService.update_rank(p2_uid, 0, 25)
-            match_result = 'draw' # <--- Xác định kết quả Hòa
+            match_result = 'draw'
         else:
             winner_uid = game['players'][winner]
             loser_uid = game['players'][3 - winner]
             RankService.update_rank(winner_uid, 25, 50)
             RankService.update_rank(loser_uid, -10, 15)
-            match_result = 'win'  # <--- Xác định kết quả Thắng
+            match_result = 'win'
         
         # Save match history
         winner_uid = None
@@ -331,14 +275,14 @@ def _handle_end_game(game, winner):
         p1_uid = game['players'][1]
         p2_uid = game['players'][2]
         
-        # --- QUAN TRỌNG: Truyền match_result vào hàm save_match ---
+        # Gọi hàm save_match với tham số match_result mới tính được
         MatchService.save_match(
             p1_uid, 
             p2_uid, 
             winner_uid, 
             game['type'], 
             game['mode'], 
-            match_result,   # <--- Tham số mới thêm vào đây
+            match_result,  # <-- Đã thêm biến này
             game['history']
         )
 
@@ -347,9 +291,6 @@ def _handle_ai_move(socketio, room_id, game):
     """Handle AI move for practice mode with tuned delay per difficulty/game type."""
     difficulty = game.get('difficulty', 'medium')
 
-    # For Tic-Tac-Toe or easy Caro, add a short artificial delay
-    # For Caro medium/hard, AI computation time is already noticeable,
-    # so keep additional sleep very small to avoid feeling laggy.
     if game['type'] == 'tic-tac-toe' or difficulty == 'easy':
         socketio.sleep(0.5)
     else:
