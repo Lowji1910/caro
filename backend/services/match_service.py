@@ -10,7 +10,6 @@ class MatchService:
     @staticmethod
     def save_match(player1_id, player2_id, winner_id, game_type, mode, result, moves=None):
         """
-        """
         Save a completed match to history.
         
         Args:
@@ -19,6 +18,7 @@ class MatchService:
             winner_id: ID of winner (None for draw)
             game_type: 'tic-tac-toe' or 'caro'
             mode: 'ranked' or 'practice'
+            result: 'win', 'loss', or 'draw' (Kết quả trận đấu)
             moves: List of move dicts (optional)
         
         Returns:
@@ -26,11 +26,14 @@ class MatchService:
         """
         import json
         moves_json = json.dumps(moves) if moves else None
-      query = """
+        
+        # --- CÂU QUERY ĐÃ SỬA: Thêm cột result ---
+        query = """
             INSERT INTO match_history (player1_id, player2_id, winner_id, game_type, mode, result, moves)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-       return DatabaseQuery.execute_update(query, (player1_id, player2_id, winner_id, game_type, mode, result, moves_json))
+        # Thêm biến result vào danh sách tham số
+        return DatabaseQuery.execute_update(query, (player1_id, player2_id, winner_id, game_type, mode, result, moves_json))
     
     @staticmethod
     def get_user_match_history(user_id, limit=20):
