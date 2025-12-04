@@ -1,6 +1,5 @@
 """
 Ranked Arena Backend - Flask + SocketIO Application
-Main application entry point with Flask and SocketIO setup.
 """
 from flask import Flask
 from flask_cors import CORS
@@ -12,13 +11,12 @@ from routes.leaderboard import leaderboard_bp
 from sockets.matchmaking import register_matchmaking_handlers
 from sockets.game import register_game_handlers
 
-
 def create_app():
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config['SECRET_KEY'] = config.SECRET_KEY
     
-    # Configure CORS
+    # Configure CORS - Cho phép Frontend kết nối
     CORS(app, resources={r"/*": {"origins": config.FRONTEND_ORIGIN}}, supports_credentials=True)
     
     # Configure SocketIO
@@ -35,10 +33,10 @@ def create_app():
     
     return app, socketio
 
-# --- ĐOẠN SỬA ĐỔI ---
-# 1. Đưa dòng này RA NGOÀI khối if main
+# --- QUAN TRỌNG: Đưa dòng này RA NGOÀI khối main ---
+# Biến này phải nằm ở đây để Gunicorn có thể tìm thấy và import
 app, socketio = create_app()
 
 if __name__ == '__main__':
-    # 2. Bên trong này chỉ để chạy local thôi
+    # Đoạn này chỉ chạy khi bạn test dưới máy local (python app.py)
     socketio.run(app, debug=config.DEBUG, host=config.HOST, port=config.PORT)
