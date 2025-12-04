@@ -306,21 +306,22 @@ def _handle_end_game(game, winner):
         winner: 1, 2, 'draw', or 0
     """
     if game['mode'] == 'ranked' and winner != 0:
+        # Biến lưu kết quả trận đấu để gửi vào DB
+        match_result = 'draw'
+
         # Update ranks and XP
-        # Win: +50 XP, +25 Rank Points
-        # Loss: +15 XP, -10 Rank Points
-        # Draw: +25 XP, 0 Rank Points
-        
         if winner == 'draw':
             p1_uid = game['players'][1]
             p2_uid = game['players'][2]
             RankService.update_rank(p1_uid, 0, 25)
             RankService.update_rank(p2_uid, 0, 25)
+            match_result = 'draw' # <--- Xác định kết quả Hòa
         else:
             winner_uid = game['players'][winner]
             loser_uid = game['players'][3 - winner]
             RankService.update_rank(winner_uid, 25, 50)
             RankService.update_rank(loser_uid, -10, 15)
+            match_result = 'win'  # <--- Xác định kết quả Thắng
         
         # Save match history
         winner_uid = None
@@ -330,7 +331,16 @@ def _handle_end_game(game, winner):
         p1_uid = game['players'][1]
         p2_uid = game['players'][2]
         
-        MatchService.save_match(p1_uid, p2_uid, winner_uid, game['type'], game['mode'], game['history'])
+        # --- QUAN TRỌNG: Truyền match_result vào hàm save_match ---
+        MatchService.save_match(
+            p1_uid, 
+            p2_uid, 
+            winner_uid, 
+            game['type'], 
+            game['mode'], 
+            match_result,   # <--- Tham số mới thêm vào đây
+            game['history']
+        )
 
 
 def _handle_ai_move(socketio, room_id, game):
