@@ -4,7 +4,7 @@ Flask-Cors==4.0.0
 python-socketio==5.10.0
 mysql-connector-python==8.2.0
 python-dotenv==1.0.0
-# Các thư viện bắt buộc để chạy trên Railway
-gunicorn>=22.0.0
-eventlet>=0.35.2
-setuptools>=69.0.0
+# Bộ 3 "thần thánh" giúp chạy ổn định:
+eventlet==0.35.2
+gunicorn==21.2.0
+setuptools==69.5.1
