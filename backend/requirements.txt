@@ -4,7 +4,7 @@ Flask-Cors==4.0.0
 python-socketio==5.10.0
 mysql-connector-python==8.2.0
 python-dotenv==1.0.0
-# Cập nhật 2 thư viện này để chạy được trên Python 3.13
-eventlet>=0.35.2
+# Các thư viện bắt buộc để chạy trên Railway
 gunicorn>=22.0.0
+eventlet>=0.35.2
 setuptools>=69.0.0
